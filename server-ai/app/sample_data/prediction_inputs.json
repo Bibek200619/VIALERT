@@ -1,0 +1,26 @@
+[
+  {
+    "areaId": "MG-ROAD",
+    "hour": 7,
+    "weather": "clear",
+    "weekday": true,
+    "officeHours": false,
+    "baselineCongestion": "low"
+  },
+  {
+    "areaId": "WHITEFIELD",
+    "hour": 9,
+    "weather": "clear",
+    "weekday": true,
+    "officeHours": true,
+    "baselineCongestion": "low"
+  },
+  {
+    "areaId": "SILK-BOARD",
+    "hour": 18,
+    "weather": "heavy-rain",
+    "weekday": true,
+    "officeHours": true,
+    "baselineCongestion": "medium"
+  }
+]

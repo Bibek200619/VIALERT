@@ -1,5 +1,14 @@
 # Data Files
 
+The Phase 1 fixtures live in [`shared-data/`](../shared-data/README.md). They use
+Bengaluru-inspired coordinates and fictional facilities and road links. The
+examples below illustrate individual records; actual collection files are JSON
+arrays, except `adjacency.json`, which is an object keyed by node ID.
+
+`scenarios.json` additionally provides five presets: `accident`, `construction`,
+`heavy-rain`, `flood`, and `congestion`, each with a road ID, severity, blockage,
+name, and description. Presets are data only; no scenario runner exists yet.
+
 ## `nodes.json`
 
 Stores map points or graph junctions.
@@ -79,4 +88,3 @@ Stores graph connections for A*.
   ]
 }
 ```
-

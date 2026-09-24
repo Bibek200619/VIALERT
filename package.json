@@ -1,0 +1,23 @@
+{
+  "name": "vialert",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VIALERT Phase 1: local emergency mobility demo foundation",
+  "engines": { "node": ">=22.12.0" },
+  "workspaces": ["client", "server-node"],
+  "scripts": {
+    "dev": "concurrently --kill-others --names web,node,ai \"npm:dev:client\" \"npm:dev:node\" \"npm:dev:ai\"",
+    "dev:client": "npm run dev --workspace=@vialert/client",
+    "dev:node": "npm run dev --workspace=@vialert/server-node",
+    "dev:ai": "uv run --project server-ai uvicorn app.main:app --app-dir server-ai --reload --host 127.0.0.1 --port 8000",
+    "setup:ai": "uv sync --project server-ai --locked",
+    "build": "npm run build --workspace=@vialert/client",
+    "test:data": "node --test scripts/data.test.mjs",
+    "test:node": "npm test --workspace=@vialert/server-node",
+    "test:ai": "uv run --project server-ai pytest server-ai/tests",
+    "test": "npm run test:data && npm run test:node && npm run test:ai",
+    "check": "npm run build && npm test",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": { "concurrently": "10.0.5" }
+}

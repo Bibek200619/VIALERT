@@ -1,0 +1,8 @@
+[
+  { "id": "S1", "nodeId": "MG-ROAD", "state": "green", "mode": "normal" },
+  { "id": "S2", "nodeId": "INDIRANAGAR", "state": "red", "mode": "normal" },
+  { "id": "S3", "nodeId": "KORAMANGALA", "state": "red", "mode": "normal" },
+  { "id": "S4", "nodeId": "SILK-BOARD", "state": "yellow", "mode": "normal" },
+  { "id": "S5", "nodeId": "ELECTRONIC-CITY", "state": "green", "mode": "normal" },
+  { "id": "S6", "nodeId": "WHITEFIELD", "state": "red", "mode": "normal" }
+]
