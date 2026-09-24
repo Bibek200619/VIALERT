@@ -48,8 +48,8 @@ export function ScenarioPanel({ city, templates, state, onSelect, onActivate, on
   }
 
   return <section className="panel scenario-panel" aria-labelledby="scenario-panel-title">
-    <div className="panel-heading-row"><div><span className="eyebrow">Incident studio · simulated only</span><h2 id="scenario-panel-title">Scenario controls</h2></div><span className="scenario-count">{activeScenarios.length} active</span></div>
-    <p className="panel-description">Apply a local mock condition to a shared road or junction. No real traffic or signal systems are affected.</p>
+    <div className="panel-heading-row"><div><span className="eyebrow">Incident studio · simulated only</span><h2 id="scenario-panel-title">Scenario controls</h2></div><span className="scenario-count">{activeScenarios.length} local{state.externalScenarios.length ? ` · ${state.externalScenarios.length} operator` : ''}</span></div>
+    <p className="panel-description">Apply a local mock condition to a shared road or junction. Operator incidents from Traffic are read-only here and can be cleared there. No real traffic or signal systems are affected.</p>
     <div className="scenario-form">
       <label>Scenario preset<select value={selectedTemplate?.id ?? ''} disabled={disabled || templates.length === 0} onChange={(event) => selectTemplate(event.target.value)}>
         {templates.map((scenario) => <option key={scenario.id} value={scenario.id}>{typeLabels[scenario.type]} · {scenario.name}</option>)}

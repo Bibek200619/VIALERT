@@ -1,4 +1,5 @@
 import type { IncidentRecord, OperationsAlertRecord, OperationsEventRecord, VehicleFixture } from '../../services/apiClient';
+import type { RouteStatus } from '../simulation/simulationTypes';
 
 export type VehicleFilter = 'all' | 'ambulances' | 'buses' | 'active' | 'critical' | 'alerts';
 export type AlertSeverityFilter = 'all' | 'critical' | 'warning' | 'info';
@@ -7,6 +8,9 @@ export type AlertTypeFilter = 'all' | OperationsAlertRecord['type'];
 export interface OperationsVehicle extends VehicleFixture {
   routeNodeIds: string[];
   routeRoadIds: string[];
+  previousRouteNodeIds: string[];
+  routeStatus: RouteStatus;
+  routeMessage: string;
   routeDistanceMeters: number;
   distanceRemainingMeters: number;
   etaSeconds: number;

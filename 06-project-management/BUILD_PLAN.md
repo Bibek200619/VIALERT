@@ -39,8 +39,9 @@
 
 ## Phase 5: Routing
 
-- Extend the Phase 3 A* demo with production-quality network data, live incident feeds, and predicted-traffic rerouting.
-- Validate route costs and travel-time estimates against real or curated data.
+- Complete: extend the shared A* demo with explicit incident, weather, congestion, closure, and mock signal-priority costs.
+- Complete: recalculate from the current graph node as local scenarios or operator-created mock incidents change; explain changed routes, ETA, and no-route states in all three workspaces.
+- Complete: keep the Bengaluru-inspired fixture graph, in-memory Node incidents, and same-browser simulation bridge. Real road feeds, calibrated travel times, and AI prediction remain later work.
 
 ## Phase 6: AI Prediction
 

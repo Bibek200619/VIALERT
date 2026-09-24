@@ -1,5 +1,6 @@
 import { formatDistance, formatDuration } from '../ambulanceData';
 import type { JourneyState, RoutePlan } from '../types';
+import type { RouteStatus } from '../../simulation/simulationTypes';
 
 interface RouteSummaryProps {
   route: RoutePlan | null;
@@ -7,13 +8,15 @@ interface RouteSummaryProps {
   baseName: string;
   currentLocation: string;
   destinationName: string;
+  routeStatus: RouteStatus;
+  routeMessage: string;
 }
 
-export function RouteSummary({ route, journey, baseName, currentLocation, destinationName }: RouteSummaryProps) {
+export function RouteSummary({ route, journey, baseName, currentLocation, destinationName, routeStatus, routeMessage }: RouteSummaryProps) {
   const remainingMeters = route ? Math.max(0, route.totalDistanceMeters - journey.distanceTravelledMeters) : 0;
   const remainingSeconds = route ? Math.max(0, route.etaSeconds - journey.elapsedSeconds) : 0;
   const averageSpeed = route && route.etaSeconds > 0 ? (route.totalDistanceMeters / route.etaSeconds) * 3.6 : 0;
-  const status = journey.status === 'active' ? 'En route' : journey.status === 'paused' ? 'Paused' : journey.status === 'completed' ? 'Arrived' : route ? 'Route preview' : 'Route unavailable';
+  const status = routeStatus === 'unavailable' ? 'No route' : routeStatus === 'rerouted' ? 'Rerouted' : routeStatus === 'impacted' ? 'Traffic impact' : journey.status === 'active' ? 'En route' : journey.status === 'paused' ? 'Paused' : journey.status === 'completed' ? 'Arrived' : 'Route preview';
 
   return <section className="panel route-summary" aria-labelledby="route-summary-title">
     <div className="panel-heading-row"><div><span className="eyebrow">Active route</span><h2 id="route-summary-title">Journey overview</h2></div><span className={`route-status ${journey.status}`}>{status}</span></div>
@@ -32,6 +35,7 @@ export function RouteSummary({ route, journey, baseName, currentLocation, destin
         <span style={{ width: `${route.totalDistanceMeters === 0 ? 100 : Math.min(100, (journey.distanceTravelledMeters / route.totalDistanceMeters) * 100)}%` }} />
       </div>
       <div className="route-meta"><span>Route length <strong>{formatDistance(route.totalDistanceMeters)}</strong></span><span>Emergency priority <strong className="priority-label">P1 · Critical</strong></span></div>
-    </> : <div className="empty-route" role="status"><strong>No route available</strong><p>Check that the selected destination and road connections exist in the shared city graph.</p></div>}
+      <p className={`route-impact-message ${routeStatus}`} role="status" aria-live="polite">{routeMessage}</p>
+    </> : <div className="empty-route" role="status"><strong>No route available</strong><p>{routeMessage}</p></div>}
   </section>;
 }

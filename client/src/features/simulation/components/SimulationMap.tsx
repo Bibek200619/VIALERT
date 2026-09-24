@@ -52,11 +52,12 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
   const [graphOnly, setGraphOnly] = useState(false);
   const [tilesLoaded, setTilesLoaded] = useState(false);
   const [tilesFailed, setTilesFailed] = useState(false);
-  const activeScenarios = state.scenarios.filter((scenario) => scenario.active);
+  const activeScenarios = [...state.scenarios, ...state.externalScenarios].filter((scenario) => scenario.active);
   const nodeById = useMemo(() => new Map(city.nodes.map((node) => [node.id, node])), [city.nodes]);
   const route = getSimulationRoutePlan(state) ?? emptyRoute;
   const routeNodes = route.nodeIds.map((id) => nodeById.get(id)).filter((node) => node !== undefined);
   const routePositions = routeNodes.map((node) => [node.lat, node.lng] as [number, number]);
+  const previousRoutePositions = state.previousRouteNodeIds.flatMap((id) => { const node = nodeById.get(id); return node ? [[node.lat, node.lng] as [number, number]] : []; });
   const base = city.bases.find((candidate) => candidate.id === state.vehicle.baseId);
   const destination = city.hospitals.find((hospital) => hospital.id === state.vehicle.destinationId);
   const destinationNode = destination ? nodeById.get(destination.nodeId) : undefined;
@@ -102,6 +103,7 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
         destinationNodeId={destination?.nodeId}
         followAmbulance={followEnabled}
         scenarioMarkers={activeScenarios}
+        previousRouteNodeIds={state.previousRouteNodeIds}
       /> : <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="leaflet-map">
         <FollowCamera enabled={followEnabled} position={ambulancePosition} />
         <TileLayer
@@ -116,6 +118,7 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
           const color = road.blocked ? '#e77468' : road.congestion === 'high' ? '#e5a54f' : road.congestion === 'medium' ? '#a79c64' : '#617269';
           return <Polyline key={road.id} positions={[[from.lat, from.lng], [to.lat, to.lng]]} pathOptions={{ color, weight: road.blocked ? 4 : 3, opacity: 0.8, dashArray: road.blocked ? '5 7' : undefined }} />;
         })}
+        {previousRoutePositions.length > 1 && <Polyline positions={previousRoutePositions} pathOptions={{ color: '#9aaca0', weight: 4, opacity: .7, dashArray: '9 10' }} />}
         {routePositions.length > 1 && <>
           <Polyline positions={routePositions} pathOptions={{ color: '#9cf37a', weight: 14, opacity: 0.2, lineCap: 'round', lineJoin: 'round' }} />
           <Polyline positions={routePositions} pathOptions={{ color: '#aaf17b', weight: 5, opacity: 0.97, lineCap: 'round', lineJoin: 'round' }} />

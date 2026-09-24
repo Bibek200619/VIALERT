@@ -7,8 +7,8 @@ activate it while playback is stopped. Effects are local and clearly simulated.
 
 | Type | Demo effect |
 | --- | --- |
-| Accident | Adds an incident marker/alert and raises congestion and travel cost on the selected segment. |
-| Construction | Marks the segment as slow, increasing congestion and route cost. |
+| Accident | Adds an incident marker/alert and raises congestion and travel cost; an operator may also mark the road closed. |
+| Construction | Marks the segment as slow, increasing congestion and route cost; an operator may also mark the road closed. |
 | Heavy rain (`rain`) | Adds an environmental warning and raises cost/congestion on the selected link and connected links. |
 | Flood | Closes the selected road so A* must avoid it or report no route. |
 | Congestion | Raises the selected segment's travel cost and refreshes ETA. |
@@ -33,7 +33,13 @@ replay convention, not a road-speed estimate. Scenario durations use the same
 simulated clock. The event timeline records scenario changes, route updates,
 junctions, signals, pauses, and arrival.
 
+In Phase 5, operator-created incidents from `/traffic` are also applied to this
+route through the mock Node feed or same-browser offline storage. A* recalculates
+from the current graph node, and the route monitor describes the affected road,
+ETA difference, or all blocking roads in a no-route state. The prior route is
+dashed on the map after a change. Reset clears the local and Node demo incidents.
+
 The map, route, affected roads, vehicle, and event list visualize these demo
 effects. No real signal is changed, no traffic sensor is consulted, and no
-government traffic-control dashboard is implemented in this phase. Optional
+real government traffic feed is connected. Optional
 browser voice alerts supplement (and never replace) written event messages.

@@ -268,7 +268,26 @@ main { max-width: 1540px; margin: 0 auto; padding: 40px 38px 22px; outline: none
 .traffic-metrics-grid > div:first-child { border: 0; }
 .traffic-metrics-grid span { color: #9eafa0; font-size: 9px; }
 .traffic-metrics-grid strong { color: #eaf6e5; font-size: 18px; font-variant-numeric: tabular-nums; }
-.traffic-lower-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; align-items: start; }
+.traffic-lower-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; align-items: start; }
+.traffic-incident-form { display: grid; gap: 10px; padding: 14px 15px; }
+.traffic-incident-form > label { display: grid; gap: 5px; color: #b9c9b6; font-size: 10px; }
+.traffic-incident-form .traffic-incident-checkbox { display: flex; align-items: center; gap: 8px; line-height: 1.35; }
+.traffic-incident-checkbox input { accent-color: #aaf17b; width: 17px; height: 17px; }
+.traffic-incident-context { color: #c2d7b8; font-size: 10px; line-height: 1.45; }
+.traffic-incident-active { border-top: 1px solid #344035; padding: 12px 15px; }
+.traffic-incident-active h3 { color: #e3efe0; font-size: 11px; }
+.traffic-incident-active h3 span { color: #b2ec87; margin-left: 4px; }
+.traffic-incident-active ul { list-style: none; margin: 10px 0 0; padding: 0; max-height: 210px; overflow-y: auto; }
+.traffic-incident-active li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; border-top: 1px solid #344035; }
+.traffic-incident-active li strong { display: block; font-size: 10px; line-height: 1.35; }
+.traffic-incident-active li small { display: block; margin-top: 4px; color: #a7b8a7; font-size: 9px; line-height: 1.35; }
+.traffic-incident-active li button { border: 1px solid #80665a; border-radius: 5px; background: #392b29; color: #ffe3d8; cursor: pointer; min-height: 30px; padding: 5px 9px; font-size: 9px; }
+.traffic-incident-active li button:disabled { opacity: .5; cursor: not-allowed; }
+.route-impact-message { margin-top: 14px; padding: 11px 13px; border: 1px solid #55744d; border-radius: 7px; background: #213023; color: #d8f3c8; font-size: 11px; line-height: 1.55; }
+.route-impact-message.rerouted, .route-impact-message.impacted { border-color: #9c7146; background: #342b21; color: #ffe0ae; }
+.route-impact-message.unavailable { border-color: #a9544a; background: #382622; color: #ffd5cc; }
+.route-compare-note { margin-top: 7px; color: #a9baa9; font-size: 10px; }
+.traffic-route-impact { margin: 0 15px 10px; }
 .traffic-filter-row, .traffic-event-tools { display: flex; align-items: end; gap: 8px; padding: 12px 15px; }
 .traffic-filter-row label, .traffic-event-tools label { flex: 1; display: grid; gap: 5px; color: #a9b8aa; font-size: 9px; }
 .traffic-scroll-list, .traffic-event-list { max-height: 350px; overflow-y: auto; }

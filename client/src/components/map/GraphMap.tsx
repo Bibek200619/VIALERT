@@ -15,6 +15,7 @@ interface GraphMapProps {
   showRoute?: boolean;
   routeTone?: 'emergency' | 'standard';
   focusNodeId?: string | null;
+  previousRouteNodeIds?: string[];
 }
 
 export interface GraphScenarioMarker {
@@ -55,10 +56,15 @@ export function GraphMap({
   showRoute = true,
   routeTone = 'emergency',
   focusNodeId = null,
+  previousRouteNodeIds = [],
 }: GraphMapProps) {
   const nodeById = new Map(city.nodes.map((node) => [node.id, node]));
   const routeNodes = route.nodeIds.map((id) => nodeById.get(id)).filter((node) => node !== undefined);
   const routePoints = routeNodes.map((node) => project(city, node.lat, node.lng).join(',')).join(' ');
+  const previousRoutePoints = previousRouteNodeIds.flatMap((id) => {
+    const node = nodeById.get(id);
+    return node ? [project(city, node.lat, node.lng).join(',')] : [];
+  }).join(' ');
   const base = nodeById.get(baseNodeId ?? city.bases[0]?.nodeId ?? '');
   const destination = nodeById.get(destinationNodeId ?? city.hospitals.find((hospital) => hospital.name.replace(' (demo)', '') === destinationName)?.nodeId ?? '');
   const ambulancePoint = ambulance ? project(city, ambulance.lat, ambulance.lng) : undefined;
@@ -105,6 +111,7 @@ export function GraphMap({
         const [x2, y2] = project(city, to.lat, to.lng);
         return <line key={road.id} x1={x1} y1={y1} x2={x2} y2={y2} className={`graph-road ${road.blocked ? 'blocked' : ''}`} />;
       })}
+      {showRoute && previousRouteNodeIds.length > 1 && <polyline points={previousRoutePoints} fill="none" stroke="#91a99d" strokeWidth="5" strokeDasharray="10 10" opacity=".78" />}
       {showRoute && <><polyline points={routePoints} className="graph-route-shadow" /><polyline points={routePoints} className="graph-route-line" filter="url(#route-glow)" /></>}
       {showIncidents && cautionRoads.map(({ road, point: [x, y] }) => <g key={road.id} className="graph-warning">
         <path d={`M ${x} ${y - 15} l 14 26 h -28 z`} />
@@ -143,6 +150,6 @@ export function GraphMap({
       })}
     </svg>
     <div className="graph-map-label"><span className="live-dot" />{followAmbulance ? 'FOLLOW AMBULANCE' : 'ROUTE GRAPH'} · BENGALURU DEMO</div>
-    <div className="graph-map-legend" aria-label="Map legend"><span><i className="legend-route" />{routeTone === 'standard' ? 'Selected route' : 'Emergency route'}</span><span><i className="legend-signal" />Signals</span><span><i className="legend-warning" />Road caution</span></div>
+    <div className="graph-map-legend" aria-label="Map legend"><span><i className="legend-route" />{routeTone === 'standard' ? 'Selected route' : 'Emergency route'}</span>{previousRouteNodeIds.length > 1 && <span>Dashed · previous route</span>}<span><i className="legend-signal" />Signals</span><span><i className="legend-warning" />Road caution</span></div>
   </div>;
 }

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { AlertPanel } from '../features/traffic/components/AlertPanel';
 import { CityOverview } from '../features/traffic/components/CityOverview';
 import { EventLog } from '../features/traffic/components/EventLog';
+import { IncidentControlPanel } from '../features/traffic/components/IncidentControlPanel';
 import { OperationsMetrics } from '../features/traffic/components/OperationsMetrics';
 import { SignalControlPanel } from '../features/traffic/components/SignalControlPanel';
 import { TrafficHeader } from '../features/traffic/components/TrafficHeader';
@@ -30,6 +31,7 @@ export function TrafficControlPage() {
     <div className="traffic-lower-grid">
       <AlertPanel alerts={operations.visibleAlerts} severity={operations.alertSeverity} type={operations.alertType} onSeverity={operations.setAlertSeverity} onType={operations.setAlertType} onAcknowledge={(alert) => void operations.acknowledge(alert)} onVehicle={operations.selectVehicle} onLocation={operations.setFocusedNodeId} />
       <SignalControlPanel city={operations.city} signals={operations.signals} vehicle={selected} onChange={operations.changeSignal} />
+      <IncidentControlPanel city={operations.city} incidents={operations.incidents} selected={selected} onAdd={operations.addIncident} onRemove={operations.removeIncident} />
       <EventLog events={operations.events} onClear={operations.clearLog} />
     </div>
     <p className="demo-disclaimer">All positions, routes, alerts, signals, and controls are simulated. Same-browser Phase 3 movement is reflected when available; no government feed or real traffic light is connected.</p>

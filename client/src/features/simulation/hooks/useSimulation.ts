@@ -8,6 +8,7 @@ import {
 } from '../simulationEngine';
 import type { Scenario, ScenarioSeverity, SimulationAction, SimulationSpeed, SimulationState, VehicleConfiguration } from '../simulationTypes';
 import { SIMULATION_SNAPSHOT_KEY } from '../simulationSnapshot';
+import { incidentToHazard, readLocalIncidents, writeLocalIncidents } from '../../routing/incidentFeed';
 
 export type ApiConnection = 'checking' | 'online' | 'degraded' | 'offline';
 
@@ -38,6 +39,7 @@ function makeIncidentRequest(scenario: Scenario, roadId: string): IncidentReques
     type: scenario.type,
     severity: scenario.severity,
     blocked: scenario.type === 'flood' || scenario.type === 'blockage' || Boolean(scenario.blocked),
+    origin: 'simulation',
   };
 }
 
@@ -62,7 +64,8 @@ export function useSimulation(): SimulationController {
         apiClient.getSimulationState(controller.signal),
       ]);
       if (controller.signal.aborted) return;
-      const loadedCity = cityResult.status === 'fulfilled' ? cityResult.value : demoCityData;
+      const receivedCity = cityResult.status === 'fulfilled' ? cityResult.value : demoCityData;
+      const loadedCity = { ...receivedCity, roads: receivedCity.roads.map((road) => demoCityData.roads.find((baseline) => baseline.id === road.id) ?? road) };
       setCity(loadedCity);
       dispatch({ type: 'city-updated', city: loadedCity });
       setConnection(health.status !== 'fulfilled'
@@ -76,6 +79,26 @@ export function useSimulation(): SimulationController {
     void load();
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const refreshIncidents = async () => {
+      const local = readLocalIncidents(window.localStorage);
+      let remote: Awaited<ReturnType<typeof apiClient.getIncidents>>['incidents'] = [];
+      try { remote = (await apiClient.getIncidents(controller.signal)).incidents.filter((incident) => incident.origin !== 'simulation'); }
+      catch { /* Local simulation and offline operator incidents remain available. */ }
+      if (controller.signal.aborted) return;
+      const combined = [...remote, ...local.filter((item) => !remote.some((other) => other.id === item.id))];
+      dispatch({ type: 'external-incidents-updated', scenarios: combined.map((incident) => ({
+        ...incidentToHazard(city, incident),
+        description: 'Mock incident created by the traffic operator.',
+      })) });
+    };
+    void refreshIncidents();
+    const timer = window.setInterval(() => void refreshIncidents(), 3000);
+    window.addEventListener('storage', refreshIncidents);
+    return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener('storage', refreshIncidents); };
+  }, [city]);
 
   useEffect(() => {
     if (state.status !== 'running') return undefined;
@@ -128,6 +151,7 @@ export function useSimulation(): SimulationController {
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
     incidentIds.current.clear();
+    writeLocalIncidents(window.localStorage, []);
     reportApiAction(
       'Simulation reset locally and in the Node demo API.',
       'Simulation reset locally. Node API records may remain until the service is available.',
@@ -209,6 +233,7 @@ export function useSimulation(): SimulationController {
   const returnToDefaultRoute = useCallback(() => {
     dispatch({ type: 'return-default-route' });
     incidentIds.current.clear();
+    writeLocalIncidents(window.localStorage, []);
     reportApiAction(
       'Default route restored locally and Node demo state reset.',
       'Default route restored locally. Node API state could not be reset.',

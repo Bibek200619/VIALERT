@@ -19,7 +19,13 @@ export function readSimulationSnapshot(storage: Pick<Storage, 'getItem'>): Simul
       || !Array.isArray(snapshot.state.events) || !Array.isArray(snapshot.state.scenarios)
       || typeof snapshot.state.currentNodeId !== 'string' || !snapshot.state.vehicle
       || typeof snapshot.state.vehicle.ambulanceId !== 'string') return null;
-    return snapshot as SimulationSnapshot;
+    const state = snapshot.state as SimulationState;
+    return { publishedAt: snapshot.publishedAt, state: {
+      ...state,
+      externalScenarios: Array.isArray(state.externalScenarios) ? state.externalScenarios : [],
+      previousRouteNodeIds: Array.isArray(state.previousRouteNodeIds) ? state.previousRouteNodeIds : [],
+      previousRouteRoadIds: Array.isArray(state.previousRouteRoadIds) ? state.previousRouteRoadIds : [],
+    } };
   } catch {
     return null;
   }

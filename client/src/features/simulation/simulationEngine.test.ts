@@ -79,7 +79,8 @@ describe('simulation engine', () => {
     expect(effects.roadCostMultipliers.R3).toBeGreaterThan(1);
     expect(after.routeRoadIds).not.toContain('R3');
     expect(after.routeStatus).toBe('rerouted');
-    expect(after.routeMessage).toMatch(/recalculated/i);
+    expect(after.routeMessage).toMatch(/rerouted to avoid accident.*ETA increased/i);
+    expect(after.previousRouteRoadIds).toEqual(before.routeRoadIds);
   });
 
   it('makes construction increase the route travel time', () => {
@@ -114,7 +115,14 @@ describe('simulation engine', () => {
     const restored = reduce(changed, { type: 'deactivate-scenario', scenarioId: 'blockage' });
     expect(restored.routeRoadIds).toContain('R3');
     expect(restored.activeScenarioIds).toEqual([]);
+    expect(restored.routeStatus).toBe('clear');
     expect(restored.events.some((event) => event.type === 'route_recalculated')).toBe(true);
+  });
+
+  it('clears stale rerouted status after an external condition has been removed', () => {
+    const stale = { ...initial(), routeStatus: 'rerouted' as const, routeMessage: 'A previous operator incident was cleared.' };
+    const refreshed = reduce(stale, { type: 'city-updated', city: demoCityData });
+    expect(refreshed.routeStatus).toBe('clear');
   });
 
   it('keeps a stable unavailable-route state when all hospital access roads are blocked', () => {
@@ -122,7 +130,7 @@ describe('simulation engine', () => {
     state = activate(state, 'blockage', 'R12');
     expect(state.routeStatus).toBe('unavailable');
     expect(state.routeNodeIds).toEqual([]);
-    expect(state.routeMessage).toMatch(/no route/i);
+    expect(state.routeMessage).toMatch(/no safe route.*2 blocked roads/i);
     expect(reduce(state, { type: 'start' })).toEqual(state);
   });
 

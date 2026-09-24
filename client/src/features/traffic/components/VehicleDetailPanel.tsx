@@ -10,6 +10,7 @@ export function VehicleDetailPanel({ city, vehicle, alerts }: { city: CityData; 
       {vehicle.type === 'ambulance' && <div className="traffic-emergency-banner">EMERGENCY PRIORITY · {vehicle.id}</div>}
       <div className="traffic-detail-identity"><span className={`traffic-vehicle-icon ${vehicle.type}`}>{vehicle.type === 'ambulance' ? '✚' : '▣'}</span><div><strong>{vehicle.vehicleNumber}</strong><small>{vehicle.type.toUpperCase()} · {vehicle.status} · {vehicle.priority}</small></div></div>
       <div className="traffic-origin-destination"><div><span>FROM</span><strong>{locationName(city, vehicle.originNodeId)}</strong></div><i aria-hidden="true">↓</i><div><span>TO</span><strong>{locationName(city, vehicle.destinationNodeId)}</strong></div></div>
+      {vehicle.type === 'ambulance' && <p className={`route-impact-message traffic-route-impact ${vehicle.routeStatus}`} role="status"><strong>{vehicle.routeStatus === 'rerouted' ? 'REROUTED' : vehicle.routeStatus === 'unavailable' ? 'NO ROUTE' : vehicle.routeStatus === 'impacted' ? 'TRAFFIC IMPACT' : 'CLEAR CORRIDOR'}</strong> · {vehicle.routeMessage}</p>}
       <dl className="traffic-detail-grid">
         <div><dt>Current location</dt><dd>{locationName(city, vehicle.currentNodeId)}</dd></div>
         <div><dt>Current road</dt><dd>{vehicle.currentRoad}</dd></div>

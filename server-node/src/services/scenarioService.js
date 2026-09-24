@@ -20,20 +20,22 @@ function refreshRoadEffects(store) {
 }
 
 export function createIncident(store, body) {
-  requireRecord(body, ['roadId', 'type', 'severity', 'blocked']);
+  requireRecord(body, ['roadId', 'type', 'severity', 'blocked', 'origin']);
   const roadId = requireString(body.roadId, 'roadId');
   const type = requireEnum(body.type, 'type', incidentTypes);
   const severity = requireEnum(body.severity, 'severity', severities);
   if (typeof body.blocked !== 'boolean') {
     throw new ApiError(400, 'INVALID_INPUT', 'blocked must be a boolean.');
   }
+  const origin = body.origin === undefined ? 'operator' : requireEnum(body.origin, 'origin', ['operator', 'simulation']);
   const road = requireEntity(store.city.roads.find((item) => item.id === roadId), 'Road', roadId);
   const incident = {
     id: `INC-${randomUUID()}`,
     roadId,
     type,
     severity,
-    blocked: body.blocked,
+    blocked: body.blocked || type === 'flood' || type === 'blockage',
+    origin,
     createdAt: new Date().toISOString(),
     demo: true,
   };
@@ -46,8 +48,10 @@ export function createIncident(store, body) {
     title: `${type} reported`,
     message: `${road.name} has a simulated ${type} overlay.`,
     nodeId: road.from,
+    incidentId: incident.id,
   });
   addOperationsEvent(store, 'incident', road.id, `Simulated ${type} activated on ${road.name}`, incident.blocked ? 'critical' : 'warning');
+  addOperationsEvent(store, 'route', 'AMB-07', `Mock ambulance corridor recalculation requested for ${type} on ${road.name}`, incident.blocked ? 'critical' : 'warning');
   return incident;
 }
 
@@ -57,6 +61,8 @@ export function removeIncident(store, incidentId) {
   const incident = requireEntity(store.incidents[index], 'Incident', id);
   store.incidents.splice(index, 1);
   refreshRoadEffects(store);
+  for (const alert of store.alerts) if (alert.incidentId === incident.id) alert.acknowledged = true;
   addOperationsEvent(store, 'incident', incident.roadId, `Simulated ${incident.type} removed from ${incident.roadId}`, 'info');
+  addOperationsEvent(store, 'route', 'AMB-07', `Mock ambulance corridor recalculation requested after ${incident.type} cleared on ${incident.roadId}`, 'info');
   return incident;
 }

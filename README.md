@@ -1,7 +1,8 @@
 # VIALERT · Emergency mobility demo
 
-VIALERT is a phased emergency mobility demo. Phase 4 adds a traffic operations
-dashboard to the Phase 3 simulation, Phase 2 ambulance dashboard, and Phase 1 Node.js mock API,
+VIALERT is a phased emergency mobility demo. Phase 5 adds incident-aware
+rerouting across the Phase 4 traffic operations dashboard, Phase 3 simulation,
+Phase 2 ambulance dashboard, and Phase 1 Node.js mock API,
 FastAPI rule-based prediction service, and Bengaluru-inspired shared JSON graph.
 All journeys, incidents, conditions, and signal states are **demo only**. There is
 no real emergency dispatch, traffic control, GPS tracking, or measured prediction
@@ -135,13 +136,41 @@ position, ETA, scenario alerts, and timeline events reflected in `/traffic`.
 This uses a browser-local snapshot, polled by the traffic view. Node separately
 shares mock signals, incidents, alerts, and operator events through polling.
 The simulation feed is not cross-device or persistent. Closing the simulation
-tab stops its timer; the traffic page shows its last snapshot until a new run
-or reset. None of these controls operate real vehicles or lights.
+tab stops its timer; the traffic page retains its last snapshot for up to ten
+minutes, then returns to the fixture route. None of these controls operate real
+vehicles or lights.
 
 For a judge demo: open both tabs; step or start the ambulance; activate a road
 blockage in Simulation; return to Traffic to inspect its new location, route
 warning, and incident marker. Change `S1` to yellow, enable priority through the
 confirmation card, acknowledge the new alert, then clear the visible event log.
+
+## Phase 5 incident-aware routing
+
+The shared A* planner now applies explicit congestion, incident, rain, closure,
+and simulated priority-signal costs. Open `/ambulance` to see the baseline
+corridor. In `/simulation`, activate an accident on `R3 · Central–Koramangala
+Link` or the Road blockage preset on the same road. The route recalculates from
+the ambulance's current graph node, shows a reason and ETA change, and draws
+the previous path as a muted dashed line. The timeline records the change.
+Return to `/ambulance` and `/traffic` in the **same browser** to see the updated
+driver route, operator alert/event, ETA, map, and incident state. The driver
+page follows the Simulation journey while it is active; use Simulation controls
+to move or reset it.
+
+The Traffic incident desk can also create an accident, construction, heavy
+rain, flood, congestion, or manual road block on a chosen graph road. Its
+incidents are held in the Node mock API and polled into Simulation and
+Ambulance; when Node is offline, operator-created incidents are stored only in
+the same browser. A blocked road is excluded from A*. For a no-route demo,
+close both `R10 · South Hospital Access` and `R12 · Silk Board–South Hospital
+Link`; the UI names the closures and stays usable until one is cleared.
+
+This is a hardcoded Bengaluru-inspired graph with heuristic costs, not real
+traffic or live dispatch. There is no production GPS, authority system, AI
+prediction input, database, or WebSocket service in Phase 5. See the
+[routing notes](05-map-data-routing/ASTAR_ROUTING.md) and
+[API contract](04-backend-realtime/API_SPEC.md).
 
 ## What Phase 1 includes
 
@@ -158,7 +187,8 @@ reset clears mock API state when Node is available. Its A* route planner reads t
 shared node, road, and adjacency fixtures and applies the documented congestion
 weights. Phase 3 adds a single-vehicle, timed client-side simulation using those
 same nodes, roads, routes, and mock incidents. Phase 4 adds an operator view and
-simulated signal controls. Multi-vehicle movement, WebSockets, live GPS, real
+simulated signal controls. Phase 5 adds dynamic mock incident-aware routing.
+Multi-vehicle movement, WebSockets, live GPS, real
 dispatch, and live signal control remain future work. `socketClient.ts` remains a reserved placeholder.
 
 ## Code and contracts
