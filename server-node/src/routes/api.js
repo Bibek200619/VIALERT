@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { createEmergency, listEmergencies } from '../services/emergencyService.js';
 import { updateSignal } from '../services/signalService.js';
-import { createIncident } from '../services/scenarioService.js';
-import { resetSimulation } from '../services/simulationService.js';
+import { createIncident, removeIncident } from '../services/scenarioService.js';
+import { getSimulationState, pauseSimulation, resetSimulation, startSimulation } from '../services/simulationService.js';
 
 export function createApiRouter(store) {
   const router = Router();
@@ -29,6 +29,22 @@ export function createApiRouter(store) {
 
   router.post('/incidents', (request, response) => {
     response.status(201).json({ incident: createIncident(store, request.body), demo: true });
+  });
+
+  router.delete('/incidents/:incidentId', (request, response) => {
+    response.json({ incident: removeIncident(store, request.params.incidentId), demo: true });
+  });
+
+  router.get('/simulation/state', (_request, response) => {
+    response.json({ simulation: getSimulationState(store), demo: true });
+  });
+
+  router.post('/simulation/start', (_request, response) => {
+    response.json({ simulation: startSimulation(store), demo: true });
+  });
+
+  router.post('/simulation/pause', (_request, response) => {
+    response.json({ simulation: pauseSimulation(store), demo: true });
   });
 
   router.post('/simulation/reset', (_request, response) => {

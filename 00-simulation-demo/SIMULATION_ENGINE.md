@@ -1,128 +1,75 @@
-# Simulation Engine
+# Simulation Engine · Phase 3
 
-## Purpose
+The `/simulation` workspace is a deterministic, single-ambulance browser demo
+over the shared Bengaluru-inspired graph. It demonstrates route progress,
+scenario effects, route-cost changes, and event history. It is not a physical
+traffic model, a dispatch system, or a source of live traffic information.
 
-The simulation engine creates fake but realistic events so judges can see how VIALERT works without real city data. It should power both dashboards and the 2D/3D ambulance navigation experience.
+## State and update loop
 
-## Engine Responsibilities
+`client/src/features/simulation/simulationEngine.ts` contains a pure reducer.
+The UI owns a single one-second interval in `useSimulation.ts`; while running,
+it dispatches one `tick` action. A 1×, 2×, or 5× multiplier advances that many
+graph edges per timer tick. **Step 1 tick** advances exactly one edge and pauses
+again. Each traversed graph edge advances the demo clock by 30 seconds. These
+fixed steps make playback easy to reproduce; they do not model real speed or
+elapsed driving time.
 
-- Let user choose start and destination.
-- Calculate route using A*.
-- Move ambulance along route nodes.
-- Update ambulance position every few seconds.
-- Trigger signal changes when ambulance approaches.
-- Generate turn-by-turn instructions.
-- Trigger voice-style navigation prompts.
-- Create traffic alerts for the traffic in-charge dashboard.
-- Add or remove incidents.
-- Support accident, road construction, heavy rain, flood, congestion, and signal failure scenarios.
-- Trigger rerouting when a scenario affects the active route.
-- Send prediction updates.
-- End the trip when ambulance reaches hospital or selected destination.
+The state records status, simulation time, speed, selected vehicle, active
+scenario IDs, current graph node, route node/road IDs, distance travelled and
+remaining, ETA, route status/message, scenario records, and ordered timeline
+events. Reset builds the same initial state from the current city fixture and
+default vehicle settings. Event IDs and timestamps are deterministic within a
+replay; wall-clock dates are not used by the client simulation engine.
 
-## Simulation State
+## Route and scenario effects
 
-```json
-{
-  "activeEmergency": true,
-  "ambulanceId": "AMB-07",
-  "vehicleNumber": "KA-01-EM-2047",
-  "currentNodeId": "N2",
-  "startNodeId": "BASE-1",
-  "destinationNodeId": "HOSP-1",
-  "route": ["BASE-1", "N2", "N4", "HOSP-1"],
-  "activeSignalId": "S2",
-  "etaSeconds": 360,
-  "speedKmph": 42,
-  "viewMode": "map",
-  "scenario": "road-blockage",
-  "nextInstruction": {
-    "type": "turn-right",
-    "distanceMeters": 30,
-    "roadName": "MG Road",
-    "voicePrompt": "In 30 meters, turn right toward MG Road."
-  }
-}
-```
+The engine reuses the Phase 2 A* planner. Scenario overlays are applied to a
+copy of the in-memory city graph and never alter the checked-in JSON. A* uses
+the existing road time and congestion weights, multiplied by scenario costs.
+Accident, construction, and congestion increase costs on the selected road;
+rain increases cost and congestion on adjacent demo links. Flood and blockage
+mark the selected road unavailable. When an activation, removal, expiry, or
+vehicle configuration changes route inputs, the engine recalculates from the
+ambulance's current node and updates ETA, distance, route status, and a written
+reason. If no path remains, playback pauses in an explicit unavailable state;
+removing a blocking condition allows recovery.
 
-## Tick-Based Updates
+Each scenario can be placed on a graph road or junction, assigned a severity,
+and activated, deactivated, or removed while the simulation is stopped. A
+scenario duration is measured in simulated seconds. Expiration deactivates the
+condition and recalculates the route. Scenarios are local mock overlays; the
+Node API receives corresponding mock incidents when available, but does not
+own the browser's route or tick loop.
 
-The easiest MVP approach is a timed tick.
+## Map and camera modes
 
-Every tick:
+Leaflet displays the fictional graph over OpenStreetMap tiles, with attribution.
+No paid key is used. If tiles fail or the map library cannot initialize, the
+workspace falls back to an SVG graph map using the same roads, route, base,
+hospital, signal, ambulance, and incident data. Map view and Follow ambulance
+are implemented. Driver, Third-person, and Rear-view mirror are labeled
+placeholders; there is no 3D city scene.
 
-1. Move ambulance forward.
-2. Update map/3D vehicle position.
-3. Check nearest signal.
-4. Turn upcoming signal green.
-5. Generate next turn instruction.
-6. Trigger voice prompt when a turn is near.
-7. Send ambulance dashboard update.
-8. Send traffic in-charge dashboard update.
-9. Check for scenario event.
-10. Recalculate route if needed.
+## Node API boundary
 
-## Suggested Tick Speed
+The Node service maintains disposable in-memory status and incident records:
 
-Use 1 tick every 1 or 2 seconds. This makes the demo visible and easy to explain.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/simulation/state` | Read mock status and incident count |
+| `POST` | `/api/simulation/start` | Mark mock service status running |
+| `POST` | `/api/simulation/pause` | Mark mock service status paused |
+| `POST` | `/api/simulation/reset` | Clear in-memory incidents/emergencies and restore fixtures |
+| `POST` | `/api/incidents` | Add a mock road incident |
+| `DELETE` | `/api/incidents/:incidentId` | Remove a mock incident and recompute affected road overlays |
 
-## Demo Controls
+The client continues with shared local data when the API is unavailable. The
+server does not implement a simulation tick endpoint, persistence, a database,
+or WebSockets. Existing Phase 1 endpoints retain their response contracts.
 
-- Start simulation
-- Pause simulation
-- Reset simulation
-- Choose start location
-- Choose destination
-- Add accident
-- Add road construction
-- Add heavy rain
-- Add flood
-- Toggle office time
-- Add second ambulance
-- Force reroute
-- Switch map view
-- Switch driver view
-- Switch third-person view
-- Toggle rear-view mirror
+## Later work
 
-## Scenario Placement
-
-The demo should allow the user to place a scenario on the map or select from preset Bengaluru locations.
-
-Example scenario object:
-
-```json
-{
-  "scenarioId": "SCN-ACC-01",
-  "type": "accident",
-  "roadId": "R4",
-  "severity": "high",
-  "blocksRoad": true,
-  "lat": 12.9716,
-  "lng": 77.5946,
-  "predictionImpact": "high-congestion-risk"
-}
-```
-
-## Voice Guidance
-
-Voice guidance can be implemented using browser text-to-speech for the MVP. If that is not available, show the prompt text and record the event in the simulation log.
-
-Example prompt timing:
-
-- 100 meters before turn: prepare instruction
-- 30 meters before turn: speak instruction
-- 10 meters before turn: repeat short instruction
-
-## 3D Simulation Scope
-
-The target experience is a Bengaluru-inspired 3D road world where the ambulance moves through lanes and the green corridor is visible. For a short hackathon, the 3D world can be stylized rather than a perfect city reconstruction.
-
-Minimum 3D MVP:
-
-- road plane with lanes,
-- ambulance model or simple emergency vehicle mesh,
-- surrounding block/building shapes,
-- green route strip,
-- incident marker,
-- camera modes for driver and third-person view.
+Multiple vehicles, government/operator controls, real signal integration, live
+GPS, production-grade traffic data, trained AI, WebSockets, and a 3D city view
+are outside Phase 3.

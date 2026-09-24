@@ -42,6 +42,12 @@ test('health and complete mock state lifecycle; reset preserves fixture files', 
     const baseline = (await request('/api/city')).body;
     assert.equal(baseline.demo, true);
     assert.deepEqual((await request('/api/emergencies')).body, { emergencies: [], demo: true });
+    assert.deepEqual((await request('/api/simulation/state')).body, {
+      simulation: { status: 'ready', simulationTimeSeconds: 0, incidentCount: 0, demo: true },
+      demo: true,
+    });
+    assert.equal((await request('/api/simulation/start', { method: 'POST' })).body.simulation.status, 'running');
+    assert.equal((await request('/api/simulation/pause', { method: 'POST' })).body.simulation.status, 'paused');
 
     const created = await request('/api/emergencies', { method: 'POST', body: emergency });
     assert.equal(created.status, 201);
@@ -56,7 +62,9 @@ test('health and complete mock state lifecycle; reset preserves fixture files', 
     assert.equal(signal.status, 200);
     assert.equal(signal.body.signal.state, 'green');
     assert.equal(signal.body.signal.mode, 'manual');
-    assert.equal((await request('/api/incidents', { method: 'POST', body: incident })).status, 201);
+    const createdIncident = await request('/api/incidents', { method: 'POST', body: incident });
+    assert.equal(createdIncident.status, 201);
+    assert.equal((await request('/api/simulation/state')).body.simulation.incidentCount, 1);
     const modifiedCity = (await request('/api/city')).body;
     assert.equal(modifiedCity.roads.find((road) => road.id === 'R4').blocked, true);
     assert.equal(modifiedCity.roads.find((road) => road.id === 'R4').congestion, 'high');
@@ -66,6 +74,13 @@ test('health and complete mock state lifecycle; reset preserves fixture files', 
     assert.equal(store.city.roads.find((road) => road.id === 'R4').blocked, true);
     assert.equal(store.city.roads.find((road) => road.id === 'R4').congestion, 'high');
     assert.equal(store.incidents.length, 2);
+
+    const removed = await request(`/api/incidents/${createdIncident.body.incident.id}`, { method: 'DELETE' });
+    assert.equal(removed.status, 200);
+    assert.equal(removed.body.incident.id, createdIncident.body.incident.id);
+    assert.equal((await request('/api/simulation/state')).body.simulation.incidentCount, 1);
+    assert.equal(store.city.roads.find((road) => road.id === 'R4').blocked, false);
+    assert.equal(store.city.roads.find((road) => road.id === 'R4').congestion, 'medium');
 
     const reset = await request('/api/simulation/reset', { method: 'POST' });
     assert.equal(reset.status, 200);
@@ -97,6 +112,7 @@ test('invalid and unknown references return JSON errors without partial mutation
       ['/api/incidents', 'POST', { ...incident, severity: 'critical' }, 400],
       ['/api/incidents', 'POST', { ...incident, type: 'invalid' }, 400],
       ['/api/incidents', 'POST', { ...incident, roadId: 'missing' }, 404],
+      ['/api/incidents/missing', 'DELETE', undefined, 404],
       ['/api/simulation/tick', 'POST', {}, 404],
     ];
     for (const [path, method, body, expectedStatus] of cases) {

@@ -6,6 +6,7 @@ import rawRoads from '../../../../shared-data/roads.json';
 import rawScenarios from '../../../../shared-data/scenarios.json';
 import rawSignals from '../../../../shared-data/signals.json';
 import type { CityData, JourneyState, Road, RoutePlan, RoutePosition, Signal, TurnGuidance, UpcomingSignal } from './types';
+import type { ScenarioPreset } from '../../services/apiClient';
 
 export const demoCityData: CityData = {
   nodes: rawNodes,
@@ -14,7 +15,11 @@ export const demoCityData: CityData = {
   hospitals: rawHospitals,
   bases: rawBases,
   adjacency: rawAdjacency,
-  scenarios: rawScenarios,
+  scenarios: rawScenarios.map((scenario) => ({
+    ...scenario,
+    severity: scenario.severity as ScenarioPreset['severity'],
+    active: false as const,
+  })),
   demo: true,
 };
 
@@ -41,7 +46,12 @@ function heuristicSeconds(city: CityData, fromId: string, targetId: string): num
   return distanceBetweenNodes(city, fromId, targetId) / 100;
 }
 
-export function findRoute(city: CityData, startId: string, targetId: string): RoutePlan | null {
+export function findRoute(
+  city: CityData,
+  startId: string,
+  targetId: string,
+  options: { roadCostMultipliers?: Readonly<Record<string, number>> } = {},
+): RoutePlan | null {
   const startExists = city.nodes.some((node) => node.id === startId);
   const targetExists = city.nodes.some((node) => node.id === targetId);
   if (!startExists || !targetExists) return null;
@@ -92,8 +102,9 @@ export function findRoute(city: CityData, startId: string, targetId: string): Ro
         || (road.to === currentId && road.from === edge.to));
       if (!road || road.blocked || !joinsNodes || !city.nodes.some((node) => node.id === edge.to)) continue;
 
+      const multiplier = options.roadCostMultipliers?.[road.id] ?? 1;
       const nextCost = (costTo.get(currentId) ?? Number.POSITIVE_INFINITY)
-        + road.baseTimeSeconds * congestionWeight[road.congestion];
+        + road.baseTimeSeconds * congestionWeight[road.congestion] * multiplier;
       if (nextCost >= (costTo.get(edge.to) ?? Number.POSITIVE_INFINITY)) continue;
 
       cameFrom.set(edge.to, { nodeId: currentId, roadId: road.id });

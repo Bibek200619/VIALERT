@@ -12,14 +12,19 @@ function loadCity() {
 
 // Each application has its own disposable state. Shared JSON files are never written.
 export function createStore() {
+  const city = loadCity();
   return {
-    city: loadCity(),
+    city,
+    baselineRoads: structuredClone(city.roads),
     emergencies: [],
     incidents: [],
+    simulation: { status: 'ready', simulationTimeSeconds: 0 },
     reset() {
       this.city = loadCity();
+      this.baselineRoads = structuredClone(this.city.roads);
       this.emergencies = [];
       this.incidents = [];
+      this.simulation = { status: 'ready', simulationTimeSeconds: 0 };
     },
   };
 }

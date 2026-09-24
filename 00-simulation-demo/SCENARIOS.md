@@ -1,107 +1,39 @@
-# Simulation Scenarios
+# Simulation Scenarios · Phase 3
 
-## Scenario 1: Normal Emergency Route
+The simulation uses fictional incidents over `shared-data/roads.json` and the
+shared adjacency graph. Presets in `shared-data/scenarios.json` start inactive.
+Choose a preset, road or junction, and severity in the Scenario ledger, then
+activate it while playback is stopped. Effects are local and clearly simulated.
 
-The ambulance starts from the selected base and travels to the selected hospital using the fastest route.
+| Type | Demo effect |
+| --- | --- |
+| Accident | Adds an incident marker/alert and raises congestion and travel cost on the selected segment. |
+| Construction | Marks the segment as slow, increasing congestion and route cost. |
+| Heavy rain (`rain`) | Adds an environmental warning and raises cost/congestion on the selected link and connected links. |
+| Flood | Closes the selected road so A* must avoid it or report no route. |
+| Congestion | Raises the selected segment's travel cost and refreshes ETA. |
+| Road blockage (`blockage`) | Closes the selected road and triggers rerouting or a no-route state. |
 
-Expected result:
+## Judge replay
 
-- User selects start and destination.
-- Route appears on ambulance dashboard.
-- Ambulance enters navigation mode.
-- Signals ahead turn green.
-- Voice guidance announces upcoming turns.
-- Traffic in-charge receives signal alerts.
-- Ambulance reaches hospital.
+1. Open `/simulation`, press **Reset simulation**, and confirm the default route.
+2. Select **Road blockage at Koramangala** on **Central–Koramangala Link** and
+   activate it. The current route is recalculated around that road.
+3. Remove the blockage, activate **Heavy rain at Silk Board**, then press
+   **Step 1 tick** to observe the written event and local cost effect.
+4. To demonstrate no route, select **South Hospital Access** and activate a
+   flood, then block **Silk Board–South Hospital Link**. Remove or deactivate
+   either closure to restore an available route.
+5. Reset and replay: the same initial vehicle, route, clock, and inactive
+   scenario set are restored.
 
-## Scenario 2: Road Blockage and Rerouting
+The timer advances one, two, or five graph segments per second at 1×, 2×, and
+5×. A simulated segment advances the displayed clock by 30 seconds; this is a
+replay convention, not a road-speed estimate. Scenario durations use the same
+simulated clock. The event timeline records scenario changes, route updates,
+junctions, signals, pauses, and arrival.
 
-An accident blocks one road on the ambulance route.
-
-Expected result:
-
-- User presses `Accident` and places it on a road.
-- Accident marker appears on map and 3D view.
-- Blocked road appears on traffic in-charge dashboard.
-- A* calculates an alternate route.
-- Driver dashboard shows rerouting alert.
-- Voice prompt says: "Accident detected ahead. Rerouting now."
-- Traffic in-charge dashboard logs the event.
-
-## Scenario 3: Manual Signal Control
-
-The traffic in-charge manually changes a signal state.
-
-Expected result:
-
-- Signal changes on both dashboards.
-- Green corridor updates visually.
-- Event log records operator action.
-- Ambulance dashboard reflects updated green/red signal.
-
-## Scenario 4: AI Traffic Prediction
-
-The simulation changes context to office exit time with rain.
-
-Expected result:
-
-- AI predicts high traffic near office district.
-- Prediction appears on traffic in-charge dashboard.
-- Driver dashboard warns about predicted congestion ahead.
-- Route cost increases for the predicted zone.
-- Route may change if predicted congestion is severe.
-
-## Scenario 5: Multiple Ambulance Alerts
-
-Two ambulance markers are active in different areas.
-
-Expected result:
-
-- Traffic in-charge receives separate alerts.
-- Dashboard shows which ambulance is approaching which signal.
-- Conflict can be shown if both need the same corridor.
-
-## Scenario 6: Road Construction
-
-A road construction scenario is placed on the route.
-
-Expected result:
-
-- Construction marker appears.
-- Route cost increases or road becomes unavailable.
-- Traffic in-charge dashboard shows construction alert.
-- Ambulance dashboard either slows the route or reroutes.
-
-## Scenario 7: Heavy Rain
-
-Heavy rain is toggled for a city zone.
-
-Expected result:
-
-- Rain zone appears on the map.
-- AI prediction increases congestion risk.
-- Ambulance dashboard shows weather warning.
-- Traffic in-charge dashboard shows affected roads.
-
-## Scenario 8: Flood
-
-Flood is placed near an underpass or low-lying road.
-
-Expected result:
-
-- Flood marker appears.
-- Affected road becomes blocked or high-risk.
-- Route updates to avoid the flood zone.
-- Voice prompt says: "Flood warning ahead. Taking alternate route."
-
-## Scenario 9: 3D Driving View
-
-The user switches from map view to third-person or driver view.
-
-Expected result:
-
-- Ambulance appears in a stylized Bengaluru road scene.
-- Green route strip appears on the lane.
-- Nearby vehicles and road markers appear.
-- Accident/construction/flood markers are visible in the 3D scene.
-- User can switch back to map view anytime.
+The map, route, affected roads, vehicle, and event list visualize these demo
+effects. No real signal is changed, no traffic sensor is consulted, and no
+government traffic-control dashboard is implemented in this phase. Optional
+browser voice alerts supplement (and never replace) written event messages.

@@ -1,7 +1,8 @@
 [
-  { "id": "accident", "name": "Accident near Koramangala", "description": "A fictional collision blocks the Indiranagar–Koramangala link.", "type": "accident", "roadId": "R4", "severity": "high", "blocked": true },
-  { "id": "construction", "name": "Road construction at MG Road", "description": "Demo lane works slow the MG Road–Indiranagar link.", "type": "construction", "roadId": "R2", "severity": "medium", "blocked": false },
-  { "id": "heavy-rain", "name": "Heavy rain at Silk Board", "description": "Simulated heavy rain reduces approach-road capacity.", "type": "heavy-rain", "roadId": "R5", "severity": "high", "blocked": false },
-  { "id": "flood", "name": "Flood on the southern connector", "description": "A fictional flooded segment closes the South Hospital link.", "type": "flood", "roadId": "R12", "severity": "high", "blocked": true },
-  { "id": "congestion", "name": "Whitefield evening congestion", "description": "Simulated office traffic slows the Whitefield link.", "type": "congestion", "roadId": "R7", "severity": "high", "blocked": false }
+  { "id": "accident", "name": "Accident near Koramangala", "description": "A fictional collision increases delay on the Indiranagar–Koramangala link.", "type": "accident", "roadId": "R4", "severity": "high", "active": false, "blocked": false, "durationSeconds": 180 },
+  { "id": "construction", "name": "Road construction at MG Road", "description": "Demo lane works slow the MG Road–Indiranagar link.", "type": "construction", "roadId": "R2", "severity": "medium", "active": false, "blocked": false, "durationSeconds": 240 },
+  { "id": "heavy-rain", "name": "Heavy rain at Silk Board", "description": "Simulated heavy rain reduces capacity on nearby roads.", "type": "rain", "roadId": "R5", "severity": "high", "active": false, "blocked": false, "durationSeconds": 300 },
+  { "id": "flood", "name": "Flood on the southern connector", "description": "A fictional flooded segment closes the South Hospital link.", "type": "flood", "roadId": "R12", "severity": "high", "active": false, "blocked": true, "durationSeconds": 180 },
+  { "id": "congestion", "name": "Whitefield evening congestion", "description": "Simulated office traffic slows the Whitefield link.", "type": "congestion", "roadId": "R7", "severity": "high", "active": false, "blocked": false, "durationSeconds": 240 },
+  { "id": "blockage", "name": "Road blockage at Koramangala", "description": "A demo road closure makes the selected segment unavailable.", "type": "blockage", "roadId": "R3", "severity": "high", "active": false, "blocked": true, "durationSeconds": 180 }
 ]

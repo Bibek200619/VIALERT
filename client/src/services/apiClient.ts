@@ -38,7 +38,40 @@ export interface CityData {
   hospitals: { id: string; name: string; nodeId: string }[];
   bases: { id: string; name: string; nodeId: string }[];
   adjacency: Record<string, { to: string; roadId: string }[]>;
-  scenarios: { id: string; name: string; type: string }[];
+  scenarios: ScenarioPreset[];
+  demo: true;
+}
+
+export interface ScenarioPreset {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  nodeId?: string;
+  roadId?: string;
+  severity: 'low' | 'medium' | 'high';
+  active: false;
+  blocked?: boolean;
+  durationSeconds?: number;
+}
+
+export interface SimulationBackendState {
+  status: 'ready' | 'running' | 'paused';
+  simulationTimeSeconds: number;
+  incidentCount: number;
+  demo: true;
+}
+
+export interface IncidentRequest {
+  roadId: string;
+  type: 'accident' | 'construction' | 'heavy-rain' | 'rain' | 'flood' | 'congestion' | 'blockage';
+  severity: 'low' | 'medium' | 'high';
+  blocked: boolean;
+}
+
+export interface IncidentRecord extends IncidentRequest {
+  id: string;
+  createdAt: string;
   demo: true;
 }
 
@@ -85,9 +118,13 @@ async function request<T>(url: string, signal?: AbortSignal, init?: RequestInit)
 function isCityData(value: unknown): value is CityData {
   if (!value || typeof value !== 'object') return false;
   const city = value as Partial<CityData>;
-  return Array.isArray(city.nodes) && Array.isArray(city.roads) && Array.isArray(city.signals)
-    && Array.isArray(city.hospitals) && Array.isArray(city.bases)
-    && city.adjacency !== null && typeof city.adjacency === 'object';
+  return Array.isArray(city.nodes) && city.nodes.length > 0
+    && Array.isArray(city.roads) && city.roads.length > 0
+    && Array.isArray(city.signals)
+    && Array.isArray(city.hospitals) && city.hospitals.length > 0
+    && Array.isArray(city.bases) && city.bases.length > 0
+    && Array.isArray(city.scenarios)
+    && city.adjacency !== null && typeof city.adjacency === 'object' && Object.keys(city.adjacency).length > 0;
 }
 
 export async function requestWithFallback<T>(
@@ -119,5 +156,22 @@ export const apiClient = {
   resetSimulation: (signal?: AbortSignal) => request<{ status: 'reset'; demo: true }>(`${nodeBaseUrl}/api/simulation/reset`, signal, {
     method: 'POST',
   }),
+  getSimulationState: (signal?: AbortSignal) => request<{ simulation: SimulationBackendState; demo: true }>(`${nodeBaseUrl}/api/simulation/state`, signal),
+  startSimulation: (signal?: AbortSignal) => request<{ simulation: SimulationBackendState; demo: true }>(`${nodeBaseUrl}/api/simulation/start`, signal, {
+    method: 'POST',
+  }),
+  pauseSimulation: (signal?: AbortSignal) => request<{ simulation: SimulationBackendState; demo: true }>(`${nodeBaseUrl}/api/simulation/pause`, signal, {
+    method: 'POST',
+  }),
+  createIncident: (payload: IncidentRequest, signal?: AbortSignal) =>
+    request<{ incident: IncidentRecord; demo: true }>(`${nodeBaseUrl}/api/incidents`, signal, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+  removeIncident: (incidentId: string, signal?: AbortSignal) =>
+    request<{ incident: IncidentRecord; demo: true }>(`${nodeBaseUrl}/api/incidents/${encodeURIComponent(incidentId)}`, signal, {
+      method: 'DELETE',
+    }),
   getAiHealth: (signal?: AbortSignal) => request<HealthResponse>(`${aiBaseUrl}/health`, signal),
 };
