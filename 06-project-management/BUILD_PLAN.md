@@ -9,19 +9,21 @@
 
 ## Phase 2: Ambulance Dashboard
 
-- Build map screen.
-- Add base, hospital, ambulance marker.
-- Show route.
-- Simulate ambulance movement.
-- Show signal status.
+- Add separate `/ambulance`, `/traffic`, and `/simulation` routes with refresh support.
+- Implement the ambulance driver dashboard using shared Bengaluru graph data.
+- Calculate a weighted A* route and show base, hospital, ambulance, roads, and signals.
+- Add deterministic browser timer controls for start, pause, and reset.
+- Update route progress, ETA, next turn, and signal awareness during movement.
+- Add optional browser speech guidance and a graph-map fallback for unavailable tiles.
+- Keep traffic-control and city-wide simulation workspaces as labeled placeholders.
 
 ## Phase 3: Simulation Engine
 
-- Add start, pause, and reset controls.
-- Move ambulance along route using timed ticks.
-- Trigger signal changes as ambulance approaches.
-- Add accident and congestion events.
-- Push updates to both dashboards.
+- Expand the single browser demo into a scenario-driven simulation service.
+- Add accident and congestion events and time-based scenario controls.
+- Define synchronized journey state for future workspaces.
+- Keep automatic or operator signal changes explicitly mock-only.
+- Plan update delivery for multiple views; WebSockets remain deferred until needed.
 
 ## Phase 4: Traffic In-charge Dashboard
 
@@ -33,10 +35,8 @@
 
 ## Phase 5: Routing
 
-- Implement A*.
-- Connect graph files.
-- Add road congestion and blockage.
-- Add rerouting.
+- Extend the Phase 2 A* demo with dynamic incident costs and route recalculation.
+- Add road blockage and predicted-traffic rerouting scenarios.
 
 ## Phase 6: AI Prediction
 

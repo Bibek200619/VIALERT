@@ -4,15 +4,25 @@
 vialert/
   client/
     src/
-      dashboards/
+      app/
+        App.tsx
+        routes.tsx
+      pages/
+        AmbulanceDashboardPage.tsx
+        TrafficControlPage.tsx
+        SimulationPage.tsx
+      features/
         ambulance/
-        traffic-incharge/
+          components/
+          hooks/
+          ambulanceData.ts
+          types.ts
+        traffic/
+        simulation/
       components/
         map/
-        signals/
-        alerts/
-        metrics/
-        simulation/
+        layout/
+        navigation/
       services/
         apiClient.ts
         socketClient.ts
@@ -43,13 +53,19 @@ vialert/
   docs/
 ```
 
+Phase 2 uses browser routes `/ambulance`, `/traffic`, and `/simulation`. The
+ambulance page owns the route, deterministic timer journey, driver guidance,
+signal awareness, and Leaflet/graph map. Traffic and simulation are separate
+placeholder pages. Node and AI service boundaries and the shared fixture format
+remain unchanged.
+
 ## Documentation Mapping
 
 | Documentation Folder | Code Folder |
 | --- | --- |
 | `00-simulation-demo` | `client/src/components/simulation` and `server-node/src/services/simulationService.js` |
-| `01-ambulance-dashboard` | `client/src/dashboards/ambulance` |
-| `02-traffic-incharge-dashboard` | `client/src/dashboards/traffic-incharge` |
+| `01-ambulance-dashboard` | `client/src/features/ambulance` and `client/src/pages/AmbulanceDashboardPage.tsx` |
+| `02-traffic-incharge-dashboard` | `client/src/features/traffic` and `client/src/pages/TrafficControlPage.tsx` |
 | `03-ai-traffic-prediction` | `server-ai/app` |
 | `04-backend-realtime` | `server-node/src` |
 | `05-map-data-routing` | `shared-data` and routing services |
