@@ -27,11 +27,15 @@
 
 ## Phase 4: Traffic In-charge Dashboard
 
-- Show all ambulances.
-- Show alerts.
-- Show traffic signals.
-- Add manual signal controls.
-- Add event log.
+- Complete: show the shared demo ambulance and bus, filters, selection, origin,
+  current location, destination, ETA, and route preview.
+- Complete: city operations map with fleet markers, mock signals/incidents,
+  layer/focus controls, and SVG graph fallback.
+- Complete: in-memory signal state and emergency priority changes with browser
+  confirmation, operator alerts, acknowledgement, event log, and metrics.
+- Complete: same-browser Phase 3 movement snapshot and Node-offline local data.
+- Deferred: cross-device real-time synchronization, real hardware, multiple
+  moving vehicles, production roles/authentication, and calibrated AI warnings.
 
 ## Phase 5: Routing
 

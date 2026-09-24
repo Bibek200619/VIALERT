@@ -3,7 +3,7 @@
 The Node service is a local mock API with in-memory state. All responses include
 `demo: true`; no endpoint dispatches an ambulance, changes a real signal, reads
 live traffic, or persists records. Existing Phase 1 routes and response shapes
-remain available alongside the Phase 3 simulation/incident routes.
+remain available alongside the Phase 3 simulation/incident and Phase 4 operator routes.
 
 ## Node.js API
 
@@ -12,6 +12,13 @@ remain available alongside the Phase 3 simulation/incident routes.
 | `GET` | `/api/health` | Health check; keeps the existing `{status, service, phase, demo}` response |
 | `GET` | `/api/city` | Shared nodes, roads, signals, hospitals, bases, adjacency, and scenario presets |
 | `GET` | `/api/emergencies` | In-memory pending demo emergencies |
+| `GET` | `/api/vehicles` | Two editable fixture vehicles; Node does not advance locations |
+| `GET` | `/api/signals` | Current in-memory mock signal states |
+| `GET` | `/api/incidents` | Current in-memory incident records |
+| `GET` | `/api/alerts` | In-memory operator alerts |
+| `PATCH` | `/api/alerts/:alertId` | Acknowledge a mock alert with `{ "acknowledged": true }` |
+| `GET` | `/api/operations/events` | In-memory signal, incident, and acknowledgement actions |
+| `GET` | `/api/operations/summary` | Mock fleet, priority signal, incident, and alert counts |
 | `POST` | `/api/emergencies` | Add a mock pending emergency; does not calculate its route |
 | `PATCH` | `/api/signals/:signalId` | Update mock signal state and/or mode |
 | `POST` | `/api/incidents` | Add an in-memory road incident and recompute mock road overlays |
@@ -20,6 +27,16 @@ remain available alongside the Phase 3 simulation/incident routes.
 | `POST` | `/api/simulation/start` | Mark mock simulation status as running |
 | `POST` | `/api/simulation/pause` | Mark mock status paused (a ready service stays ready) |
 | `POST` | `/api/simulation/reset` | Clear emergencies/incidents/status and restore fixture roads/signals |
+
+Phase 4 responses use `{vehicles|signals|incidents|alerts|events|summary, demo:true}`.
+The signal PATCH accepts `state` (`red`, `yellow`, `green`) and/or `mode`
+(`normal`, `manual`, `emergency`). The browser requires a confirmation step
+before sending emergency mode. The Node API remains a demo API; it has no
+operator authentication or physical light connection. Incident creation and
+priority-mode changes add mock alerts/events. `POST /api/simulation/reset` also
+clears these in-memory operator records. The traffic page overlays a Phase 3
+snapshot from same-browser local storage for moving ambulance location, ETA,
+route, and event history; Node does not own that tick loop.
 
 ### Create an incident
 

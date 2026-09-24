@@ -1,5 +1,17 @@
 # Traffic In-charge Dashboard UI Requirements
 
+Phase 4 delivery: `/traffic` uses a compact fleet/map/profile grid, a city
+overview strip, metrics row, and alert/signal/event panels. The left app rail
+remains the shared navigation. Each vehicle row shows number, route direction,
+status, priority, ETA, alert count, and update time. Selected details show
+origin, destination, current road and junction, next signal, speed, route
+distance, remaining distance, and ETA. Map layers have independent toggles and
+an SVG fallback. Signal controls include non-color state text and a confirmation
+card for simulated priority mode. Keyboard focus, semantic headings, and status
+feedback are required. Below this note, examples remain design guidance for
+future expansion; AI zones, multiple ambulances, and real control are not part
+of the Phase 4 implementation.
+
 The traffic in-charge dashboard should feel like a professional fleet-control dashboard. It should borrow the structure of a vehicle profile system: a left-side list of active vehicles, a large selected-vehicle detail area, route preview, alerts, signal controls, and operational statistics.
 
 ## Design Reference Direction

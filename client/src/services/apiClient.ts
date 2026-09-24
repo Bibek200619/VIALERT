@@ -39,7 +39,53 @@ export interface CityData {
   bases: { id: string; name: string; nodeId: string }[];
   adjacency: Record<string, { to: string; roadId: string }[]>;
   scenarios: ScenarioPreset[];
+  vehicles?: VehicleFixture[];
   demo: true;
+}
+
+export interface VehicleFixture {
+  id: string;
+  type: 'ambulance' | 'bus' | 'police' | 'response';
+  vehicleNumber: string;
+  status: 'active' | 'paused' | 'offline' | 'completed';
+  priority: 'critical' | 'high' | 'normal';
+  originNodeId: string;
+  currentNodeId: string;
+  destinationNodeId: string;
+  emergencyType: string;
+  crew: string;
+  speedKph: number;
+}
+
+export interface OperationsAlertRecord {
+  id: string;
+  severity: 'critical' | 'warning' | 'info';
+  type: 'ambulance' | 'signal' | 'incident' | 'route' | 'system';
+  title: string;
+  message: string;
+  vehicleId?: string;
+  nodeId?: string;
+  createdAt: number;
+  acknowledged: boolean;
+}
+
+export interface OperationsEventRecord {
+  id: string;
+  timestamp: number;
+  category: string;
+  subject: string;
+  message: string;
+  severity: 'critical' | 'warning' | 'info';
+}
+
+export interface OperationsSummaryResponse {
+  activeVehicles: number;
+  activeAmbulances: number;
+  criticalAlerts: number;
+  emergencyRoutes: number;
+  signalsInPriorityMode: number;
+  incidentsToday: number;
+  responseRoutesProtected: number;
 }
 
 export interface ScenarioPreset {
@@ -147,6 +193,20 @@ export const apiClient = {
     return city;
   },
   getEmergencies: (signal?: AbortSignal) => request<EmergenciesResponse>(`${nodeBaseUrl}/api/emergencies`, signal),
+  getVehicles: (signal?: AbortSignal) => request<{ vehicles: VehicleFixture[]; demo: true }>(`${nodeBaseUrl}/api/vehicles`, signal),
+  getSignals: (signal?: AbortSignal) => request<{ signals: Signal[]; demo: true }>(`${nodeBaseUrl}/api/signals`, signal),
+  updateSignal: (signalId: string, payload: Partial<Pick<Signal, 'state' | 'mode'>>, signal?: AbortSignal) =>
+    request<{ signal: Signal; demo: true }>(`${nodeBaseUrl}/api/signals/${encodeURIComponent(signalId)}`, signal, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    }),
+  getIncidents: (signal?: AbortSignal) => request<{ incidents: IncidentRecord[]; demo: true }>(`${nodeBaseUrl}/api/incidents`, signal),
+  getAlerts: (signal?: AbortSignal) => request<{ alerts: OperationsAlertRecord[]; demo: true }>(`${nodeBaseUrl}/api/alerts`, signal),
+  acknowledgeAlert: (alertId: string, signal?: AbortSignal) =>
+    request<{ alert: OperationsAlertRecord; demo: true }>(`${nodeBaseUrl}/api/alerts/${encodeURIComponent(alertId)}`, signal, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acknowledged: true }),
+    }),
+  getOperationsEvents: (signal?: AbortSignal) => request<{ events: OperationsEventRecord[]; demo: true }>(`${nodeBaseUrl}/api/operations/events`, signal),
+  getOperationsSummary: (signal?: AbortSignal) => request<{ summary: OperationsSummaryResponse; demo: true }>(`${nodeBaseUrl}/api/operations/summary`, signal),
   createEmergency: (payload: EmergencyRequest, signal?: AbortSignal) =>
     request<{ emergency: EmergencyRecord; demo: true }>(`${nodeBaseUrl}/api/emergencies`, signal, {
       method: 'POST',

@@ -1,4 +1,4 @@
-# Node demo API · Phase 3
+# Node demo API · Phase 4
 
 This is a local, in-memory mock API. It does not dispatch ambulances, control
 real signals, track GPS, or run the browser simulation clock. All responses
@@ -17,7 +17,14 @@ Optional settings: copy `server-node/.env.example` to `server-node/.env` and edi
 | Endpoint | Status | Response |
 | --- | --- | --- |
 | `GET /api/health` | 200 | `{status:"ok", service:"vialert-node", phase:1, demo:true}` (kept for compatibility) |
-| `GET /api/city` | 200 | `{nodes, roads, signals, hospitals, bases, adjacency, scenarios, demo:true}` |
+| `GET /api/city` | 200 | `{nodes, roads, signals, hospitals, bases, adjacency, scenarios, vehicles, demo:true}` |
+| `GET /api/vehicles` | 200 | `{vehicles, demo:true}` from editable fixtures |
+| `GET /api/signals` | 200 | `{signals, demo:true}` current mock states |
+| `GET /api/incidents` | 200 | `{incidents, demo:true}` |
+| `GET /api/alerts` | 200 | `{alerts, demo:true}` |
+| `PATCH /api/alerts/:alertId` | 200 | `{alert, demo:true}` after `{ "acknowledged": true }` |
+| `GET /api/operations/events` | 200 | `{events, demo:true}` mock operator actions |
+| `GET /api/operations/summary` | 200 | `{summary, demo:true}` fleet and corridor counts |
 | `GET /api/emergencies` | 200 | `{emergencies:[], demo:true}` |
 | `POST /api/emergencies` | 201 | `{emergency, demo:true}` |
 | `PATCH /api/signals/:signalId` | 200 | `{signal, demo:true}` |
@@ -30,7 +37,9 @@ Optional settings: copy `server-node/.env.example` to `server-node/.env` and edi
 
 The Node simulation endpoints report mock service status only. The browser owns
 the deterministic movement, scenarios, route calculation, and event timeline.
-No server tick endpoint, database, or WebSocket is implemented.
+No server tick endpoint, database, or WebSocket is implemented. Phase 4 traffic
+operations poll this API for in-memory signals, incidents, alerts, and events;
+same-browser simulation movement is shared through a local browser snapshot.
 
 Create an emergency with:
 
@@ -62,7 +71,7 @@ be a JSON boolean. The road's mock congestion rises to at least the incident
 severity, and a blocking incident marks the road blocked. Removing an incident
 recomputes from the fixture baseline plus remaining incidents, so a removed
 closure can reopen a road when no other closure remains. Reset reloads the
-fixtures and clears emergencies, incidents, and simulation status. Restarting
+fixtures and clears emergencies, incidents, alerts, operator events, and simulation status. Restarting
 the Node process also clears in-memory changes.
 
 Malformed JSON and invalid fields return 400, unknown entity IDs return 404, and

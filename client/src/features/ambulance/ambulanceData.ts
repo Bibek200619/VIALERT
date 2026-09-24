@@ -5,6 +5,7 @@ import rawNodes from '../../../../shared-data/nodes.json';
 import rawRoads from '../../../../shared-data/roads.json';
 import rawScenarios from '../../../../shared-data/scenarios.json';
 import rawSignals from '../../../../shared-data/signals.json';
+import rawVehicles from '../../../../shared-data/vehicles.json';
 import type { CityData, JourneyState, Road, RoutePlan, RoutePosition, Signal, TurnGuidance, UpcomingSignal } from './types';
 import type { ScenarioPreset } from '../../services/apiClient';
 
@@ -19,6 +20,12 @@ export const demoCityData: CityData = {
     ...scenario,
     severity: scenario.severity as ScenarioPreset['severity'],
     active: false as const,
+  })),
+  vehicles: rawVehicles.map((vehicle) => ({
+    ...vehicle,
+    type: vehicle.type as 'ambulance' | 'bus' | 'police' | 'response',
+    status: vehicle.status as 'active' | 'paused' | 'offline' | 'completed',
+    priority: vehicle.priority as 'critical' | 'high' | 'normal',
   })),
   demo: true,
 };

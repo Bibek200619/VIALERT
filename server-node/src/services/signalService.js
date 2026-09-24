@@ -1,4 +1,5 @@
 import { ApiError, requireEntity, requireEnum, requireRecord } from './validation.js';
+import { addOperationsAlert, addOperationsEvent } from './operationsService.js';
 
 export function updateSignal(store, signalId, body) {
   requireRecord(body, ['state', 'mode']);
@@ -11,5 +12,9 @@ export function updateSignal(store, signalId, body) {
   const signal = requireEntity(store.city.signals.find((item) => item.id === signalId), 'Signal', signalId);
   if (Object.hasOwn(body, 'state')) signal.state = body.state;
   if (Object.hasOwn(body, 'mode')) signal.mode = body.mode;
+  addOperationsEvent(store, 'signal', signal.id, `${signal.id} set to ${signal.state.toUpperCase()} · ${signal.mode} mode`, 'info');
+  if (signal.mode === 'emergency') {
+    addOperationsAlert(store, { severity: 'warning', type: 'signal', title: 'Emergency priority enabled', message: `${signal.id} is in simulated emergency priority mode.`, nodeId: signal.nodeId });
+  }
   return signal;
 }

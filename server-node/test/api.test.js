@@ -130,3 +130,42 @@ test('invalid and unknown references return JSON errors without partial mutation
     assert.deepEqual(store.incidents, []);
   });
 });
+
+test('traffic operations endpoints expose fleet, mock signals, alerts, events, and reset-safe state', async () => {
+  await withApi(async (request) => {
+    const fleet = await request('/api/vehicles');
+    assert.equal(fleet.status, 200);
+    assert.equal(fleet.body.vehicles.length, 2);
+    assert.equal(fleet.body.vehicles[0].id, 'AMB-07');
+    assert.equal((await request('/api/signals')).body.signals.length, 6);
+    assert.deepEqual((await request('/api/incidents')).body, { incidents: [], demo: true });
+    assert.deepEqual((await request('/api/alerts')).body, { alerts: [], demo: true });
+    assert.equal((await request('/api/operations/summary')).body.summary.activeVehicles, 2);
+
+    const priority = await request('/api/signals/S2', { method: 'PATCH', body: { state: 'green', mode: 'emergency' } });
+    assert.equal(priority.body.signal.mode, 'emergency');
+    assert.equal((await request('/api/signals')).body.signals.find((signal) => signal.id === 'S2').state, 'green');
+    assert.equal((await request('/api/operations/summary')).body.summary.signalsInPriorityMode, 1);
+    const signalAlert = (await request('/api/alerts')).body.alerts[0];
+    assert.equal(signalAlert.acknowledged, false);
+    assert.equal(signalAlert.type, 'signal');
+    const ack = await request(`/api/alerts/${signalAlert.id}`, { method: 'PATCH', body: { acknowledged: true } });
+    assert.equal(ack.body.alert.acknowledged, true);
+    assert.equal((await request('/api/alerts')).body.alerts[0].acknowledged, true);
+    assert.equal((await request(`/api/alerts/${signalAlert.id}`, { method: 'PATCH', body: { acknowledged: false } })).status, 400);
+    assert.equal((await request('/api/alerts/missing', { method: 'PATCH', body: { acknowledged: true } })).status, 404);
+
+    const created = await request('/api/incidents', { method: 'POST', body: incident });
+    assert.equal(created.status, 201);
+    assert.equal((await request('/api/incidents')).body.incidents.length, 1);
+    assert.equal((await request('/api/alerts')).body.alerts.some((alert) => alert.type === 'incident' && alert.severity === 'critical'), true);
+    assert.ok((await request('/api/operations/events')).body.events.length >= 3);
+    assert.equal((await request('/api/operations/summary')).body.summary.incidentsToday, 1);
+
+    await request('/api/simulation/reset', { method: 'POST' });
+    assert.deepEqual((await request('/api/alerts')).body.alerts, []);
+    assert.deepEqual((await request('/api/operations/events')).body.events, []);
+    assert.equal((await request('/api/signals')).body.signals.find((signal) => signal.id === 'S2').mode, 'normal');
+    assert.equal((await request('/api/vehicles')).body.vehicles.length, 2);
+  });
+});

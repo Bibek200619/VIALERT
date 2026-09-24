@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ApiError, requireEntity, requireEnum, requireRecord, requireString } from './validation.js';
+import { addOperationsAlert, addOperationsEvent } from './operationsService.js';
 
 const severities = ['low', 'medium', 'high'];
 const incidentTypes = ['accident', 'construction', 'heavy-rain', 'rain', 'flood', 'congestion', 'blockage'];
@@ -39,6 +40,14 @@ export function createIncident(store, body) {
   store.incidents.push(incident);
   // These road effects are in-memory demo overlays; fixture files remain unchanged.
   refreshRoadEffects(store);
+  addOperationsAlert(store, {
+    severity: incident.blocked || incident.severity === 'high' ? 'critical' : 'warning',
+    type: 'incident',
+    title: `${type} reported`,
+    message: `${road.name} has a simulated ${type} overlay.`,
+    nodeId: road.from,
+  });
+  addOperationsEvent(store, 'incident', road.id, `Simulated ${type} activated on ${road.name}`, incident.blocked ? 'critical' : 'warning');
   return incident;
 }
 
@@ -48,5 +57,6 @@ export function removeIncident(store, incidentId) {
   const incident = requireEntity(store.incidents[index], 'Incident', id);
   store.incidents.splice(index, 1);
   refreshRoadEffects(store);
+  addOperationsEvent(store, 'incident', incident.roadId, `Simulated ${incident.type} removed from ${incident.roadId}`, 'info');
   return incident;
 }

@@ -12,6 +12,11 @@ description, and a `blocked` hint for closures. The Phase 3 browser simulation
 interprets these local overlays; they never mutate fixture files. The Node mock
 incident API accepts `rain` and the legacy `heavy-rain` spelling.
 
+`vehicles.json` adds one mock ambulance and one mock bus for Phase 4. Their
+origin/current/destination node references are validated by `npm run test:data`.
+The frontend calculates route preview and ETA with the existing A* graph; the
+fixture records do not contain live locations.
+
 ## `nodes.json`
 
 Stores map points or graph junctions.

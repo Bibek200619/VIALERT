@@ -7,6 +7,7 @@ import {
   simulationReducer,
 } from '../simulationEngine';
 import type { Scenario, ScenarioSeverity, SimulationAction, SimulationSpeed, SimulationState, VehicleConfiguration } from '../simulationTypes';
+import { SIMULATION_SNAPSHOT_KEY } from '../simulationSnapshot';
 
 export type ApiConnection = 'checking' | 'online' | 'degraded' | 'offline';
 
@@ -81,6 +82,14 @@ export function useSimulation(): SimulationController {
     const timer = window.setInterval(() => dispatch({ type: 'tick' }), 1000);
     return () => window.clearInterval(timer);
   }, [state.status]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIMULATION_SNAPSHOT_KEY, JSON.stringify({ state, publishedAt: Date.now() }));
+    } catch {
+      // Storage can be disabled; the simulation remains usable in this tab.
+    }
+  }, [state]);
 
   const reportApiAction = useCallback((successMessage: string, failureMessage: string, request: () => Promise<unknown>) => {
     void request().then(() => setActionNotice(successMessage)).catch(() => {
