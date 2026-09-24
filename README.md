@@ -1,10 +1,11 @@
 # VIALERT · Emergency mobility demo
 
-VIALERT is a phased emergency mobility demo. Phase 2 adds a route-based ambulance
-dashboard on top of the Phase 1 React + Vite shell, Node.js mock API, FastAPI
-rule-based prediction service, and Bengaluru-inspired shared JSON graph. All
-journeys and signal states are **demo only**. There is no real emergency dispatch,
-traffic control, GPS tracking, or measured prediction accuracy.
+VIALERT is a phased emergency mobility demo. Phase 3 adds a replayable simulation
+workspace to the Phase 2 ambulance dashboard and the Phase 1 Node.js mock API,
+FastAPI rule-based prediction service, and Bengaluru-inspired shared JSON graph.
+All journeys, incidents, conditions, and signal states are **demo only**. There is
+no real emergency dispatch, traffic control, GPS tracking, or measured prediction
+accuracy.
 
 ## Local development
 
@@ -31,7 +32,7 @@ npm run dev:ai
 
 | Service | Address | Purpose |
 | --- | --- | --- |
-| React + Vite | http://localhost:5173/ambulance | Ambulance dashboard; traffic and simulation routes are placeholders |
+| React + Vite | http://localhost:5173/ambulance | Ambulance dashboard, traffic placeholder, simulation control center |
 | Node API | http://127.0.0.1:4000/api/health | In-memory city, emergency, signal, incident, and reset APIs |
 | FastAPI | http://127.0.0.1:8000/health | Deterministic mock traffic predictions |
 | API explorer | http://127.0.0.1:8000/docs | Interactive FastAPI schema and requests |
@@ -79,13 +80,45 @@ tile service. Browser speech synthesis is optional: enable voice guidance and us
 connected to emergency systems.
 
 The traffic-control and simulation pages are independently available at `/traffic`
-and `/simulation`, with their planned Phase 4 and Phase 3 scope labeled in the UI.
+and `/simulation`. The traffic-control page remains a Phase 4 placeholder.
+
+## Phase 3 simulation control center
+
+Open [http://localhost:5173/simulation](http://localhost:5173/simulation). The
+default demo is one ambulance from Central Ambulance Base to South Care Hospital.
+Use **Start simulation**, **Pause**, **Resume**, or **Step 1 tick**; choose 1×,
+2×, or 5× speed. The event timeline records scenario activations, junctions,
+signals, reroutes, pauses, and arrival. **Restart current scenario** returns the
+vehicle to its configured base while keeping current local scenario effects;
+**Return to default route** clears them; **Reset simulation** also restores the
+vehicle and speed defaults and clears the in-memory Node API state when available.
+
+To replay a blockage demo, choose **Road blockage at Koramangala**, leave/select
+`Central–Koramangala Link`, and activate it. The local A* route avoids the blocked
+segment when an alternate route exists. For a no-route state, activate flood on
+`South Hospital Access` and blockage on `Silk Board–South Hospital Link`; remove
+or deactivate one of those scenarios to recover. Rain, construction, congestion,
+and accident scenarios change local road cost and are shown on the map, environment
+panel, route status, and event timeline. Reset restores the same initial state.
+
+The map uses Leaflet/OpenStreetMap tiles without an API key and automatically
+falls back to the same shared-graph SVG view if tiles are unavailable. Map and
+Follow ambulance are implemented camera modes; Driver, Third-person, and Rear-view
+are visibly labeled presentation placeholders. Optional voice alerts use browser
+speech synthesis when available; the event timeline remains the written source of
+truth. Simulation state and movement are local and deterministic. The Node API
+records start/pause and mock incidents in memory; no WebSocket, real GPS, real
+signal integration, or live emergency system is used.
+
+Phase 3 Node endpoints are `GET /api/simulation/state`, `POST /api/simulation/start`,
+`POST /api/simulation/pause`, `POST /api/simulation/reset`, `POST /api/incidents`,
+and `DELETE /api/incidents/:incidentId`. See [API contracts](04-backend-realtime/API_SPEC.md).
 
 ## What Phase 1 includes
 
 - Dark VIALERT navigation shell with three browsable workspace destinations.
 - Shared data: nine nodes, twelve road links, six signals, one base, two fictional
-  hospitals, and five incident presets.
+  hospitals, and six editable scenario presets (expanded in Phase 3).
 - Validated mock APIs with disposable in-memory state and a reset endpoint.
 - Rule-based predictions with clear reasons and a fixed, uncalibrated demo
   confidence value. No model is trained.
@@ -94,10 +127,10 @@ The ambulance page reads health, city, and mock emergency data through
 `client/src/services/apiClient.ts`; starting a trip posts a mock emergency and
 reset clears mock API state when Node is available. Its A* route planner reads the
 shared node, road, and adjacency fixtures and applies the documented congestion
-weights. Movement and voice are browser-side demos. Traffic operator controls,
-scenario-driven city simulation, dynamic incident rerouting, WebSockets, live GPS,
-real dispatch, and live signal control remain future work. `socketClient.ts`
-remains a reserved placeholder.
+weights. Phase 3 adds a single-vehicle, timed client-side simulation using those
+same nodes, roads, routes, and mock incidents. Traffic operator controls,
+multi-vehicle simulation, WebSockets, live GPS, real dispatch, and live signal
+control remain future work. `socketClient.ts` remains a reserved placeholder.
 
 ## Code and contracts
 

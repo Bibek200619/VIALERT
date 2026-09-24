@@ -5,9 +5,12 @@ Bengaluru-inspired coordinates and fictional facilities and road links. The
 examples below illustrate individual records; actual collection files are JSON
 arrays, except `adjacency.json`, which is an object keyed by node ID.
 
-`scenarios.json` additionally provides five presets: `accident`, `construction`,
-`heavy-rain`, `flood`, and `congestion`, each with a road ID, severity, blockage,
-name, and description. Presets are data only; no scenario runner exists yet.
+`scenarios.json` provides six inactive presets: `accident`, `construction`,
+`rain` (displayed as heavy rain), `flood`, `congestion`, and `blockage`. Each
+includes a unique ID, road reference, severity, active flag, duration, name,
+description, and a `blocked` hint for closures. The Phase 3 browser simulation
+interprets these local overlays; they never mutate fixture files. The Node mock
+incident API accepts `rain` and the legacy `heavy-rain` spelling.
 
 ## `nodes.json`
 

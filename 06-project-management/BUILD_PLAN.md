@@ -19,11 +19,11 @@
 
 ## Phase 3: Simulation Engine
 
-- Expand the single browser demo into a scenario-driven simulation service.
-- Add accident and congestion events and time-based scenario controls.
-- Define synchronized journey state for future workspaces.
-- Keep automatic or operator signal changes explicitly mock-only.
-- Plan update delivery for multiple views; WebSockets remain deferred until needed.
+- Complete: add a deterministic single-ambulance simulation workspace at `/simulation`.
+- Complete: add start, pause, resume, step, reset, 1×/2×/5×, vehicle, scenario, and camera-mode controls.
+- Complete: support accident, construction, rain, flood, congestion, and road-blockage overlays, event timeline, optional browser voice alerts, and route recalculation/no-route states.
+- Complete: add in-memory Node simulation-status and incident create/delete endpoints with fixture-safe reset behavior.
+- Deferred: synchronized multi-view state, multiple vehicles, real traffic/signal sources, persistence, and WebSockets.
 
 ## Phase 4: Traffic In-charge Dashboard
 
@@ -35,8 +35,8 @@
 
 ## Phase 5: Routing
 
-- Extend the Phase 2 A* demo with dynamic incident costs and route recalculation.
-- Add road blockage and predicted-traffic rerouting scenarios.
+- Extend the Phase 3 A* demo with production-quality network data, live incident feeds, and predicted-traffic rerouting.
+- Validate route costs and travel-time estimates against real or curated data.
 
 ## Phase 6: AI Prediction
 
@@ -47,7 +47,5 @@
 
 ## Phase 7: Demo Polish
 
-- Add reset button.
-- Add one-click demo scenario.
-- Add screenshots.
-- Prepare final pitch.
+- Add curated one-click judge scenarios and capture screenshots/recording.
+- Prepare final pitch and presentation flow.

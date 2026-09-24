@@ -11,7 +11,7 @@ export function createApp({ store = createStore(), clientOrigin = 'http://localh
   app.use(express.json({ limit: '32kb' }));
   app.use('/api', createApiRouter(store));
   app.use((_request, _response, next) => {
-    next(new ApiError(404, 'NOT_FOUND', 'This endpoint is not available in the Phase 1 foundation.'));
+    next(new ApiError(404, 'NOT_FOUND', 'This endpoint is not available in the VIALERT demo API.'));
   });
 
   app.use((error, _request, response, _next) => {

@@ -13,9 +13,12 @@ congestion levels are invented demo values; no real traffic source is connected.
 - `bases.json`, `hospitals.json`: entities referencing node IDs. Their IDs match
   their node IDs in this small dataset, so the documented API examples work.
 - `adjacency.json`: every road listed at both endpoints, for future routing.
-- `scenarios.json`: five editable incident presets. They do not execute themselves.
-  To create a mock incident, send only `roadId`, `type`, `severity`, and `blocked`
-  from a preset to `POST /api/incidents`.
+- `scenarios.json`: six editable, inactive simulation presets (`accident`,
+  `construction`, `rain`, `flood`, `congestion`, and `blockage`). Each references
+  a known road and includes severity/duration metadata. The browser simulation
+  applies local route and map overlays; fixture files stay unchanged. To create
+  a Node mock incident, send `roadId`, `type`, `severity`, and boolean `blocked`
+  to `POST /api/incidents`.
 
 When adding a road, update both adjacency entries. When renaming an ID, update all
 references. Run `npm run test:data` to check graph integrity. Restart Node (or call

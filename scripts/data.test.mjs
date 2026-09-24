@@ -60,16 +60,21 @@ test('base reaches every demo location and hospital through the graph', () => {
   }
 });
 
-test('signal references and all five scenario presets are valid', () => {
+test('signal references and all six scenario presets use the valid simulation schema', () => {
   for (const signal of signals) {
     assert.ok(nodeIds.has(signal.nodeId));
     assert.ok(['red', 'yellow', 'green'].includes(signal.state));
     assert.ok(['normal', 'manual', 'emergency'].includes(signal.mode));
   }
-  assert.deepEqual(scenarios.map(({ type }) => type).sort(), ['accident', 'construction', 'heavy-rain', 'flood', 'congestion'].sort());
+  assert.deepEqual(scenarios.map(({ type }) => type).sort(), ['accident', 'construction', 'rain', 'flood', 'congestion', 'blockage'].sort());
+  assert.equal(scenarios.length, 6);
   for (const scenario of scenarios) {
-    assert.ok(roadById.has(scenario.roadId));
+    assert.ok(scenario.roadId || scenario.nodeId, `${scenario.id} must identify a map location`);
+    if (scenario.roadId) assert.ok(roadById.has(scenario.roadId));
+    if (scenario.nodeId) assert.ok(nodeIds.has(scenario.nodeId));
     assert.ok(['low', 'medium', 'high'].includes(scenario.severity));
+    assert.equal(typeof scenario.active, 'boolean');
     assert.equal(typeof scenario.blocked, 'boolean');
+    assert.equal(typeof scenario.description, 'string');
   }
 });

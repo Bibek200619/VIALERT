@@ -1,81 +1,66 @@
-# Simulation Demo
+# VIALERT Simulation Control Center · Phase 3
 
-The Simulation Demo is the main way to present VIALERT to judges. Since the team cannot drive a real ambulance through a city, the MVP will simulate ambulance movement, traffic signals, congestion, alerts, AI traffic prediction, and a navigation-style driving experience.
+The simulation at `/simulation` is a deterministic, single-ambulance demo over
+the shared Bengaluru-inspired graph. It demonstrates local incident effects,
+route-cost changes, rerouting, signal encounters, and event history. It is not a
+city traffic simulator and does not contact real emergency or signal systems.
 
-## Goal
+## Run and replay
 
-Show how all three parts of VIALERT work together in one controlled demo:
+From the repository root, run `npm run dev` and open
+`http://localhost:5173/simulation`. The Node API is optional: the browser uses the
+same checked-in graph when Node is offline. Street tiles use Leaflet and
+OpenStreetMap without a paid key; if tiles fail, the page switches to the shared
+SVG graph map.
 
-1. Ambulance driver sees route, turn guidance, voice prompts, and green lights.
-2. Traffic in-charge receives alerts, tracks vehicles, and controls signals.
-3. AI prediction warns about future congestion and scenario impact.
+The starting configuration is `AMB-07` from Central Ambulance Base to South Care
+Hospital. The driver panel allows the ID, vehicle number, starting base,
+destination, priority, and A*-calculated route to be changed while the simulation
+is stopped.
 
-## Visual Direction
+- **Start / Pause / Resume** controls timed playback.
+- **Step 1 tick** advances one graph segment from a stopped state.
+- **1× / 2× / 5×** advances up to one, two, or five graph segments per one-second
+  local timer tick. The displayed simulation clock and event log advance
+  deterministically; speed does not represent real road speed.
+- **Restart current scenario** returns to the configured base and preserves
+  active conditions.
+- **Return to default route** restores the default unit and destination and
+  clears active scenarios. It retains the selected playback speed; **Reset
+  simulation** restores 1× speed.
+- **Reset simulation** returns to the same initial local state and asks the Node
+  API to clear in-memory incidents and status when available.
 
-The simulation should feel more like a live emergency navigation product than a static map.
+To replay a reroute, choose **Road blockage at Koramangala** on
+`Central–Koramangala Link` and activate it. The A* engine recalculates from the
+ambulance's current graph node. For a no-route state, block both
+`South Hospital Access` and `Silk Board–South Hospital Link`; the route panel
+explains that a blocking scenario must be removed. Deactivate or remove either
+condition to recalculate an available route.
 
-Use these design goals:
+## Scenario types
 
-- Bengaluru-inspired city environment
-- real map layer for location context
-- optional stylized 3D road view for driving simulation
-- green emergency corridor
-- animated ambulance movement
-- accident, rain, flood, and construction scenario markers
-- traffic police control dashboard connected to the same simulation state
+The scenario panel supports accident, construction, heavy rain, flood,
+congestion, and road blockage. A scenario preset, road or junction, and severity
+are selectable. Scenario effects are visible in the map markers/road styling,
+route status and ETA, environment panel, written event timeline, and optional
+browser voice alerts. Activating or removing a scenario recalculates the active
+route. Flood and road blockage make selected roads unavailable; the other types
+raise congestion and route cost without changing shared JSON fixtures.
 
-## What The Simulation Shows
+Map view and Follow ambulance are implemented. Driver, Third-person, and
+Rear-view mirror are labeled placeholders; there is no 3D city model. Voice
+alerts use browser speech synthesis when available and never imply a connection to
+real dispatch.
 
-- User chooses ambulance start location.
-- User chooses destination hospital or target location.
-- Ambulance starts from the selected base/location.
-- Ambulance receives a route to the destination.
-- Traffic lights on the route turn green ahead of the ambulance.
-- Traffic in-charge dashboard receives alerts.
-- Operator can manually change traffic lights.
-- AI predicts congestion in a future area.
-- Route can update if a road becomes blocked or congested.
-- Driver dashboard shows turn-by-turn navigation and voice-style prompts.
+## Files and testing
 
-## Why Simulation Is Needed
+Simulation-specific logic lives in `client/src/features/simulation/`, including a
+pure reducer/route-effect engine and deterministic tests. `server-node` provides
+in-memory start, pause, state, reset, incident-create, and incident-delete
+endpoints. It does not own the browser's tick loop, and no database or WebSocket
+is used.
 
-The real system would need live GPS, actual traffic signals, government data, weather data, city permissions, and a real ambulance route test. The MVP uses simulation to prove the product workflow without needing real-world deployment.
-
-## Simulation Inputs
-
-- Selected ambulance start point
-- Selected destination point
-- Hardcoded Bengaluru city graph
-- Hardcoded hospitals and ambulance bases
-- Hardcoded traffic signals
-- Simulated ambulance movement
-- Simulated traffic congestion
-- Simulated weather and office-hour conditions
-- Simulated AI prediction output
-- User-added scenarios: accident, construction, rain, flood, congestion
-
-## Simulation Output
-
-- Moving ambulance marker
-- Live route line
-- Green-light corridor
-- Turn-by-turn navigation
-- Voice-style guidance prompts
-- Traffic alerts
-- Manual signal changes
-- Predicted congestion zones
-- 3D/third-person vehicle view option
-- Trip summary
-
-## View Modes
-
-The simulation should support multiple presentation views:
-
-| View | Purpose |
-| --- | --- |
-| Map view | Clear route, markers, incidents, and signals |
-| Driver view | Front-facing navigation experience |
-| Third-person view | Shows ambulance moving through a 3D road scene |
-| Rear-view mirror | Optional small rear camera/mirror UI |
-
-For the short hackathon, the minimum polished version should include map view and one animated vehicle view. The other views can be documented as future-ready toggles if time is short.
+Run `npm run check` and `npm run test` for build and unit/API checks. With
+`npm run dev` active, run `npm run smoke` for the frontend/API health and proxy
+check.
