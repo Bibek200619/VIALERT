@@ -1,9 +1,10 @@
-# VIALERT · Phase 1 foundation
+# VIALERT · Emergency mobility demo
 
-The runnable foundation contains a React + Vite shell, a Node.js mock API, a
-FastAPI rule-based prediction service, and shared Bengaluru-inspired JSON data.
-All data, signal changes, and predictions are **demo only**. There is no real
-dispatch, traffic control, or measured prediction accuracy.
+VIALERT is a phased emergency mobility demo. Phase 2 adds a route-based ambulance
+dashboard on top of the Phase 1 React + Vite shell, Node.js mock API, FastAPI
+rule-based prediction service, and Bengaluru-inspired shared JSON graph. All
+journeys and signal states are **demo only**. There is no real emergency dispatch,
+traffic control, GPS tracking, or measured prediction accuracy.
 
 ## Local development
 
@@ -30,13 +31,16 @@ npm run dev:ai
 
 | Service | Address | Purpose |
 | --- | --- | --- |
-| React + Vite | http://localhost:5173 | Ambulance, traffic in-charge, and simulation placeholders |
+| React + Vite | http://localhost:5173/ambulance | Ambulance dashboard; traffic and simulation routes are placeholders |
 | Node API | http://127.0.0.1:4000/api/health | In-memory city, emergency, signal, incident, and reset APIs |
 | FastAPI | http://127.0.0.1:8000/health | Deterministic mock traffic predictions |
 | API explorer | http://127.0.0.1:8000/docs | Interactive FastAPI schema and requests |
 
-Vite proxies `/api/*` to Node and `/ai/*` to FastAPI (removing `/ai`). The frontend
-checks actual service health and reports unavailable services honestly. To change
+Vite proxies `/api/*` to Node and `/ai/*` to FastAPI (removing `/ai`). Direct
+browser routes are `/ambulance`, `/traffic`, and `/simulation`; refreshing any
+route in local development returns the Vite app. Unknown routes redirect to
+`/ambulance`. The dashboard checks Node health and reports unavailable services
+honestly, then uses the checked-in city graph as a fallback. To change
 ports/origins, see `client/.env.example` and `server-node/.env.example`; the AI
 service accepts `CORS_ORIGINS` as an environment variable. Default settings work
 without copying any env files. Stop an existing service if a default port is busy;
@@ -46,33 +50,59 @@ Vite deliberately refuses to choose a different port silently.
 
 ```bash
 npm run check        # TypeScript + frontend build, shared-data, Node, and Python tests
+npm run test         # Includes routing, journey, voice-copy, and API-fallback tests
 npm run smoke        # With npm run dev running: live health, proxy, data, and HTML checks
 ```
 
-Individual checks: `npm run build`, `npm run test:data`, `npm run test:node`, and
-`npm run test:ai`. The smoke check is read-only. The Node tests use disposable
+Individual checks: `npm run build`, `npm run test:data`, `npm run test:client`,
+`npm run test:node`, and `npm run test:ai`. The smoke check is read-only. The Node tests use disposable
 local servers and verify validation and reset without modifying fixture files.
-The frontend production bundle is written to `client/dist/`; deploying services
-and proxy configuration is outside Phase 1.
+The frontend production bundle is written to `client/dist/`; deployment is
+outside the current phase.
+
+## Phase 2 ambulance dashboard
+
+Open [http://localhost:5173/ambulance](http://localhost:5173/ambulance). Choose
+one of the shared demo hospitals, select **Start journey**, **Pause journey**, or
+**Reset journey**, and watch the ambulance marker progress over the route. Each
+demo tick advances simulated time deterministically; the displayed route, ETA,
+next turn, and upcoming signal list follow that progress. Reset also asks the
+Node API to clear its in-memory mock records when the service is available.
+
+The map uses Leaflet with standard OpenStreetMap raster tiles and visible OSM
+attribution. Internet access is needed for street tiles. If tiles fail, the page
+switches to an SVG view of the shared city graph; the route, base, hospital,
+signals, and high-congestion/blocked-road markers remain visible. A
+`VITE_OSM_TILE_URL` environment value can point Leaflet at another compatible
+tile service. Browser speech synthesis is optional: enable voice guidance and use
+**Test voice**. Browser support and permissions vary, and this feature is not
+connected to emergency systems.
+
+The traffic-control and simulation pages are independently available at `/traffic`
+and `/simulation`, with their planned Phase 4 and Phase 3 scope labeled in the UI.
 
 ## What Phase 1 includes
 
-- Three navigable placeholders with a dark theme and green emergency accent.
+- Dark VIALERT navigation shell with three browsable workspace destinations.
 - Shared data: nine nodes, twelve road links, six signals, one base, two fictional
   hospitals, and five incident presets.
 - Validated mock APIs with disposable in-memory state and a reset endpoint.
 - Rule-based predictions with clear reasons and a fixed, uncalibrated demo
   confidence value. No model is trained.
 
-The frontend currently reads health and city data. Mutation endpoints are available
-for API development; final dashboard controls are deferred. Map rendering, A*,
-ambulance movement, WebSockets, full simulation, and final dashboards belong to
-later phases. `socketClient.ts` and reserved component folders are placeholders.
+The ambulance page reads health, city, and mock emergency data through
+`client/src/services/apiClient.ts`; starting a trip posts a mock emergency and
+reset clears mock API state when Node is available. Its A* route planner reads the
+shared node, road, and adjacency fixtures and applies the documented congestion
+weights. Movement and voice are browser-side demos. Traffic operator controls,
+scenario-driven city simulation, dynamic incident rerouting, WebSockets, live GPS,
+real dispatch, and live signal control remain future work. `socketClient.ts`
+remains a reserved placeholder.
 
 ## Code and contracts
 
 ```text
-client/         React + Vite + TypeScript shell
+client/         React + Vite + TypeScript route-based frontend
 server-node/    Node.js + Express mock API
 server-ai/      Python + FastAPI mock predictions
 shared-data/    Editable Bengaluru-inspired JSON fixtures
@@ -82,13 +112,11 @@ scripts/        Data integrity tests and live smoke checks
 - [Node API contracts and examples](server-node/README.md)
 - [FastAPI setup, prediction rules, and examples](server-ai/README.md)
 - [Shared data format and editing rules](shared-data/README.md)
-- [Phase 1 API inventory](04-backend-realtime/API_SPEC.md)
+- [API inventory](04-backend-realtime/API_SPEC.md)
 - [Build plan and next phases](06-project-management/BUILD_PLAN.md)
 
-For Phase 2, start with the ambulance placeholder, consume `/api/city` using
-`client/src/services/apiClient.ts`, and add map rendering against the shared node
-IDs. The following documentation describes the overall MVP vision, including
-features that are **not implemented yet**.
+The following documentation describes the overall MVP vision, including features
+that are **not implemented yet**.
 
 ## Overall MVP vision
 
