@@ -1,0 +1,24 @@
+[project]
+name = "vialert-ai"
+version = "0.1.0"
+description = "Phase 1 deterministic mock traffic prediction API for VIALERT"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.128,<1.0",
+    "pydantic>=2.12,<3.0",
+    "uvicorn>=0.40,<1.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28,<1.0",
+    "pytest>=9.0,<10.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

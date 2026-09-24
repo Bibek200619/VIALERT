@@ -1,0 +1,11 @@
+[
+  { "id": "BASE-1", "name": "Central Ambulance Base (demo)", "lat": 12.9850, "lng": 77.5990, "type": "base" },
+  { "id": "MG-ROAD", "name": "MG Road", "lat": 12.9756, "lng": 77.6067, "type": "junction" },
+  { "id": "INDIRANAGAR", "name": "Indiranagar", "lat": 12.9784, "lng": 77.6408, "type": "junction" },
+  { "id": "KORAMANGALA", "name": "Koramangala", "lat": 12.9352, "lng": 77.6245, "type": "junction" },
+  { "id": "SILK-BOARD", "name": "Silk Board", "lat": 12.9177, "lng": 77.6238, "type": "junction" },
+  { "id": "ELECTRONIC-CITY", "name": "Electronic City", "lat": 12.8452, "lng": 77.6602, "type": "junction" },
+  { "id": "WHITEFIELD", "name": "Whitefield", "lat": 12.9698, "lng": 77.7500, "type": "junction" },
+  { "id": "HOSP-1", "name": "Central Care Hospital (demo)", "lat": 12.9670, "lng": 77.6000, "type": "hospital" },
+  { "id": "HOSP-2", "name": "South Care Hospital (demo)", "lat": 12.9270, "lng": 77.6100, "type": "hospital" }
+]

@@ -1,0 +1,4 @@
+[
+  { "id": "HOSP-1", "name": "Central Care Hospital (demo)", "nodeId": "HOSP-1" },
+  { "id": "HOSP-2", "name": "South Care Hospital (demo)", "nodeId": "HOSP-2" }
+]

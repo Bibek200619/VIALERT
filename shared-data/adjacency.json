@@ -1,0 +1,11 @@
+{
+  "BASE-1": [{ "to": "MG-ROAD", "roadId": "R1" }, { "to": "HOSP-1", "roadId": "R11" }],
+  "MG-ROAD": [{ "to": "BASE-1", "roadId": "R1" }, { "to": "INDIRANAGAR", "roadId": "R2" }, { "to": "KORAMANGALA", "roadId": "R3" }, { "to": "HOSP-1", "roadId": "R9" }],
+  "INDIRANAGAR": [{ "to": "MG-ROAD", "roadId": "R2" }, { "to": "KORAMANGALA", "roadId": "R4" }, { "to": "WHITEFIELD", "roadId": "R7" }],
+  "KORAMANGALA": [{ "to": "MG-ROAD", "roadId": "R3" }, { "to": "INDIRANAGAR", "roadId": "R4" }, { "to": "SILK-BOARD", "roadId": "R5" }, { "to": "HOSP-2", "roadId": "R10" }],
+  "SILK-BOARD": [{ "to": "KORAMANGALA", "roadId": "R5" }, { "to": "ELECTRONIC-CITY", "roadId": "R6" }, { "to": "HOSP-2", "roadId": "R12" }],
+  "ELECTRONIC-CITY": [{ "to": "SILK-BOARD", "roadId": "R6" }, { "to": "WHITEFIELD", "roadId": "R8" }],
+  "WHITEFIELD": [{ "to": "INDIRANAGAR", "roadId": "R7" }, { "to": "ELECTRONIC-CITY", "roadId": "R8" }],
+  "HOSP-1": [{ "to": "MG-ROAD", "roadId": "R9" }, { "to": "BASE-1", "roadId": "R11" }],
+  "HOSP-2": [{ "to": "KORAMANGALA", "roadId": "R10" }, { "to": "SILK-BOARD", "roadId": "R12" }]
+}

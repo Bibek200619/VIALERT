@@ -1,0 +1,14 @@
+[
+  { "id": "R1", "name": "Central Base Link", "from": "BASE-1", "to": "MG-ROAD", "distanceMeters": 2000, "baseTimeSeconds": 240, "congestion": "low", "blocked": false },
+  { "id": "R2", "name": "MG Road–Indiranagar Link", "from": "MG-ROAD", "to": "INDIRANAGAR", "distanceMeters": 4800, "baseTimeSeconds": 600, "congestion": "medium", "blocked": false },
+  { "id": "R3", "name": "Central–Koramangala Link", "from": "MG-ROAD", "to": "KORAMANGALA", "distanceMeters": 6000, "baseTimeSeconds": 720, "congestion": "medium", "blocked": false },
+  { "id": "R4", "name": "Indiranagar–Koramangala Link", "from": "INDIRANAGAR", "to": "KORAMANGALA", "distanceMeters": 6000, "baseTimeSeconds": 780, "congestion": "medium", "blocked": false },
+  { "id": "R5", "name": "Silk Board Approach", "from": "KORAMANGALA", "to": "SILK-BOARD", "distanceMeters": 4000, "baseTimeSeconds": 480, "congestion": "high", "blocked": false },
+  { "id": "R6", "name": "Electronic City Link", "from": "SILK-BOARD", "to": "ELECTRONIC-CITY", "distanceMeters": 10000, "baseTimeSeconds": 900, "congestion": "medium", "blocked": false },
+  { "id": "R7", "name": "Whitefield Link", "from": "INDIRANAGAR", "to": "WHITEFIELD", "distanceMeters": 14000, "baseTimeSeconds": 1500, "congestion": "medium", "blocked": false },
+  { "id": "R8", "name": "Eastern Demo Connector", "from": "WHITEFIELD", "to": "ELECTRONIC-CITY", "distanceMeters": 24000, "baseTimeSeconds": 2400, "congestion": "low", "blocked": false },
+  { "id": "R9", "name": "Central Hospital Access", "from": "MG-ROAD", "to": "HOSP-1", "distanceMeters": 1600, "baseTimeSeconds": 180, "congestion": "low", "blocked": false },
+  { "id": "R10", "name": "South Hospital Access", "from": "KORAMANGALA", "to": "HOSP-2", "distanceMeters": 2200, "baseTimeSeconds": 240, "congestion": "low", "blocked": false },
+  { "id": "R11", "name": "Base–Central Hospital Link", "from": "BASE-1", "to": "HOSP-1", "distanceMeters": 3000, "baseTimeSeconds": 360, "congestion": "low", "blocked": false },
+  { "id": "R12", "name": "Silk Board–South Hospital Link", "from": "SILK-BOARD", "to": "HOSP-2", "distanceMeters": 3000, "baseTimeSeconds": 360, "congestion": "medium", "blocked": false }
+]
