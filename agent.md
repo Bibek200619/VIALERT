@@ -15,7 +15,15 @@ You must work according to the VIALERT MVP documentation and the project skill i
 
 ### 1. Documentation-First Approach
 
-Before implementing any task, check the relevant project documentation under `docs/` or `vialert-mvp-docs/`.
+Before implementing any task, check the relevant project documentation folders:
+
+- `00-simulation-demo/`
+- `01-ambulance-dashboard/`
+- `02-traffic-incharge-dashboard/`
+- `03-ai-traffic-prediction/`
+- `04-backend-realtime/`
+- `05-map-data-routing/`
+- `06-project-management/`
 
 Use the documentation as the source of truth for:
 
@@ -238,4 +246,3 @@ Always distinguish between:
 - future real-world integrations.
 
 Do not claim live traffic control, real emergency dispatch, or real-world prediction accuracy unless those systems are actually integrated and tested.
-
