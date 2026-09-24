@@ -2,7 +2,7 @@
   "name": "vialert",
   "version": "0.1.0",
   "private": true,
-  "description": "VIALERT Phase 2: route-based ambulance navigation demo",
+  "description": "VIALERT emergency mobility simulation and traffic operations demo",
   "engines": { "node": ">=22.12.0" },
   "workspaces": ["client", "server-node"],
   "scripts": {

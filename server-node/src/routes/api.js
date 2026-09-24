@@ -3,6 +3,7 @@ import { createEmergency, listEmergencies } from '../services/emergencyService.j
 import { updateSignal } from '../services/signalService.js';
 import { createIncident, removeIncident } from '../services/scenarioService.js';
 import { getSimulationState, pauseSimulation, resetSimulation, startSimulation } from '../services/simulationService.js';
+import { acknowledgeAlert, getOperationsSummary, listAlerts, listEvents, listIncidents, listSignals, listVehicles } from '../services/operationsService.js';
 
 export function createApiRouter(store) {
   const router = Router();
@@ -17,6 +18,34 @@ export function createApiRouter(store) {
 
   router.get('/emergencies', (_request, response) => {
     response.json({ emergencies: listEmergencies(store), demo: true });
+  });
+
+  router.get('/vehicles', (_request, response) => {
+    response.json({ vehicles: listVehicles(store), demo: true });
+  });
+
+  router.get('/signals', (_request, response) => {
+    response.json({ signals: listSignals(store), demo: true });
+  });
+
+  router.get('/incidents', (_request, response) => {
+    response.json({ incidents: listIncidents(store), demo: true });
+  });
+
+  router.get('/alerts', (_request, response) => {
+    response.json({ alerts: listAlerts(store), demo: true });
+  });
+
+  router.patch('/alerts/:alertId', (request, response) => {
+    response.json({ alert: acknowledgeAlert(store, request.params.alertId, request.body), demo: true });
+  });
+
+  router.get('/operations/events', (_request, response) => {
+    response.json({ events: listEvents(store), demo: true });
+  });
+
+  router.get('/operations/summary', (_request, response) => {
+    response.json({ summary: getOperationsSummary(store), demo: true });
   });
 
   router.post('/emergencies', (request, response) => {

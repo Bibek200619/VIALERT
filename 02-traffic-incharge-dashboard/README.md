@@ -1,30 +1,30 @@
-# Traffic In-charge Dashboard
+# Traffic Operations Center · Phase 4
 
-The Traffic In-charge Dashboard is for government officials or traffic operators. It shows active ambulances, alerts, and traffic-signal controls.
+Open `/traffic` after `npm run dev` from the repository root. The page is a demo
+operator workspace for a fictional Bengaluru-inspired city graph. It displays
+one ambulance and one bus, route previews, signal states, incidents, alerts,
+metrics, and an event log. No government feed, real GPS, or traffic hardware is
+connected.
 
-## Goal
+## Operator flow
 
-Give the traffic operator a live control-room view of emergency movement and traffic-light status.
+1. Choose **All vehicles**, **Ambulances**, **Buses**, **Active only**, **Critical**, or **Alerts** in Fleet watch. Select a unit to update the profile and map route.
+2. Use **Fit all vehicles** or **Focus selected**. Signals, incidents, and routes can be hidden individually. The map switches to the shared SVG graph when OSM tiles fail, or with **Use graph fallback**.
+3. In Signal controls, select a signal and set a simulated red, yellow, or green state. **Enable emergency priority** opens a confirmation card; confirming sets the demo signal green and enters emergency mode. Disable it to return to normal mode.
+4. Filter the alert inbox, focus a related vehicle or location, and acknowledge alerts. Filter or clear the visible event log.
+5. Keep `/simulation` open in another tab of the same browser. Start or step its ambulance, then observe the location, ETA, route status, alerts, and simulation events here. The browser-local snapshot is polled once per second; Node state is polled every four seconds.
 
-## Operator Should See
+The vehicle data model is stored in `shared-data/vehicles.json`. It includes ID,
+type, number, status, priority, origin/current/destination graph nodes, emergency
+type, crew label, and demo speed. The traffic feature adds calculated A* route,
+ETA, next junction/signal, alert count, and update time. Alerts have ID,
+severity, type, title, message, optional vehicle or node, timestamp, and
+acknowledged state. Node keeps signal changes, incidents, alerts, and events in
+memory. Resetting its simulation endpoint clears those records.
 
-- All active ambulances
-- Ambulance route and direction
-- Alerts when an ambulance is approaching a signal
-- Current traffic-light status
-- Congested or predicted traffic areas
-- Manual controls for changing signal state
-
-## Main Actions
-
-- View active ambulance alerts
-- Select an ambulance
-- Turn a signal green/red/yellow
-- Enable or disable emergency corridor
-- Acknowledge alerts
-- View prediction warning
-
-## MVP Approach
-
-The dashboard does not need to control real signals. It can change signal states inside the simulation and show that the operator has control.
-
+The page can load with Node offline using the checked-in graph and vehicles.
+Offline signal changes and derived alert acknowledgements remain local to that
+page. API failures retain the previous visible state and show feedback. Browser
+snapshots do not synchronize different devices or browsers, and closing the
+simulation tab stops its movement. Real dispatch, physical signals, production
+WebSockets, authentication, and AI prediction integration belong to later work.

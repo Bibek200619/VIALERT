@@ -3,13 +3,13 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (name) => JSON.parse(readFileSync(new URL(`../shared-data/${name}.json`, import.meta.url), 'utf8'));
-const [nodes, roads, signals, hospitals, bases, scenarios, adjacency] =
-  ['nodes', 'roads', 'signals', 'hospitals', 'bases', 'scenarios', 'adjacency'].map(read);
+const [nodes, roads, signals, hospitals, bases, scenarios, adjacency, vehicles] =
+  ['nodes', 'roads', 'signals', 'hospitals', 'bases', 'scenarios', 'adjacency', 'vehicles'].map(read);
 const nodeIds = new Set(nodes.map(({ id }) => id));
 const roadById = new Map(roads.map((road) => [road.id, road]));
 
 test('all fixture IDs are unique and location coordinates are valid', () => {
-  for (const collection of [nodes, roads, signals, hospitals, bases, scenarios]) {
+  for (const collection of [nodes, roads, signals, hospitals, bases, scenarios, vehicles]) {
     assert.equal(new Set(collection.map(({ id }) => id)).size, collection.length);
     assert.ok(collection.every(({ id }) => typeof id === 'string' && id.length > 0));
   }
@@ -17,6 +17,21 @@ test('all fixture IDs are unique and location coordinates are valid', () => {
     assert.ok(Number.isFinite(node.lat) && node.lat >= -90 && node.lat <= 90);
     assert.ok(Number.isFinite(node.lng) && node.lng >= -180 && node.lng <= 180);
     assert.ok(['base', 'hospital', 'junction'].includes(node.type));
+  }
+});
+
+test('demo fleet references connected graph nodes and has valid operator fields', () => {
+  assert.ok(vehicles.some((vehicle) => vehicle.type === 'ambulance'));
+  assert.ok(vehicles.some((vehicle) => vehicle.type !== 'ambulance'));
+  for (const vehicle of vehicles) {
+    assert.ok(['ambulance', 'bus', 'police', 'response'].includes(vehicle.type));
+    assert.ok(['active', 'paused', 'offline', 'completed'].includes(vehicle.status));
+    assert.ok(['critical', 'high', 'normal'].includes(vehicle.priority));
+    assert.ok(nodeIds.has(vehicle.originNodeId));
+    assert.ok(nodeIds.has(vehicle.currentNodeId));
+    assert.ok(nodeIds.has(vehicle.destinationNodeId));
+    assert.ok(typeof vehicle.vehicleNumber === 'string' && vehicle.vehicleNumber.length > 0);
+    assert.ok(Number.isFinite(vehicle.speedKph) && vehicle.speedKph >= 0);
   }
 });
 

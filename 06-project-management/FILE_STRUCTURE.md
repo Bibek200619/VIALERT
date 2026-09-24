@@ -18,6 +18,11 @@ vialert/
           ambulanceData.ts
           types.ts
         traffic/
+          components/ (fleet, map, alerts, signal, event, metrics panels)
+          hooks/useTrafficOperations.ts
+          trafficData.ts
+          trafficTypes.ts
+          trafficUtils.ts
         simulation/
           components/
           hooks/
@@ -25,6 +30,7 @@ vialert/
           simulationEngine.test.ts
           simulationTypes.ts
           simulationData.ts
+          simulationSnapshot.ts
       components/
         map/
         layout/
@@ -41,6 +47,7 @@ vialert/
         signalService.js
         simulationService.js
         scenarioService.js
+        operationsService.js
       sockets/
       data/
   server-ai/
@@ -56,15 +63,17 @@ vialert/
     hospitals.json
     bases.json
     adjacency.json
+    vehicles.json
   docs/
 ```
 
 Phase 3 retains browser routes `/ambulance`, `/traffic`, and `/simulation`. The
 ambulance feature owns driver navigation; the simulation feature owns its pure
 deterministic reducer, timer hook, scenario overlays, timeline, controls, and
-map presentation. The traffic page remains a Phase 4 placeholder. Node owns
-only mock in-memory service status and incident records; it does not advance the
-client's simulation clock.
+map presentation. The traffic feature owns the operator page, fleet mapping,
+polling, panels, and same-browser simulation snapshot. Node owns mock signal,
+incident, alert, and event records but does not advance the client's simulation
+clock.
 
 ## Documentation Mapping
 

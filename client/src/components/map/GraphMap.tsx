@@ -9,6 +9,12 @@ interface GraphMapProps {
   destinationNodeId?: string;
   followAmbulance?: boolean;
   scenarioMarkers?: GraphScenarioMarker[];
+  otherVehicles?: { id: string; type: string; lat: number; lng: number; selected?: boolean }[];
+  showSignals?: boolean;
+  showIncidents?: boolean;
+  showRoute?: boolean;
+  routeTone?: 'emergency' | 'standard';
+  focusNodeId?: string | null;
 }
 
 export interface GraphScenarioMarker {
@@ -43,6 +49,12 @@ export function GraphMap({
   destinationNodeId,
   followAmbulance = false,
   scenarioMarkers = [],
+  otherVehicles = [],
+  showSignals = true,
+  showIncidents = true,
+  showRoute = true,
+  routeTone = 'emergency',
+  focusNodeId = null,
 }: GraphMapProps) {
   const nodeById = new Map(city.nodes.map((node) => [node.id, node]));
   const routeNodes = route.nodeIds.map((id) => nodeById.get(id)).filter((node) => node !== undefined);
@@ -50,8 +62,10 @@ export function GraphMap({
   const base = nodeById.get(baseNodeId ?? city.bases[0]?.nodeId ?? '');
   const destination = nodeById.get(destinationNodeId ?? city.hospitals.find((hospital) => hospital.name.replace(' (demo)', '') === destinationName)?.nodeId ?? '');
   const ambulancePoint = ambulance ? project(city, ambulance.lat, ambulance.lng) : undefined;
-  const viewBox = followAmbulance && ambulancePoint
-    ? `${ambulancePoint[0] - 420} ${ambulancePoint[1] - 240} 840 480`
+  const focusNode = focusNodeId ? nodeById.get(focusNodeId) : undefined;
+  const focusPoint = focusNode ? project(city, focusNode.lat, focusNode.lng) : followAmbulance ? ambulancePoint : undefined;
+  const viewBox = focusPoint
+    ? `${focusPoint[0] - 420} ${focusPoint[1] - 240} 840 480`
     : '0 0 840 480';
   const cautionRoads = city.roads.filter((road) => road.blocked || road.congestion === 'high').flatMap((road) => {
     const from = nodeById.get(road.from);
@@ -73,7 +87,7 @@ export function GraphMap({
   });
   const indicator: Record<string, string> = { accident: 'A', construction: 'C', rain: 'R', flood: 'F', congestion: 'T', blockage: 'X' };
 
-  return <div className={`graph-map${followAmbulance ? ' follow-camera' : ''}`} role="img" aria-label={`Bengaluru demo road graph. Route from ${base?.name ?? 'base'} to ${destinationName}; active simulated incidents are marked. Ambulance marker shows current position.`}>
+  return <div className={`graph-map${followAmbulance ? ' follow-camera' : ''}${routeTone === 'standard' ? ' standard-route' : ''}`} role="img" aria-label={`Bengaluru demo road graph. Route from ${base?.name ?? 'base'} to ${destinationName}; simulated vehicles, signals, and incident overlays are marked.`}>
     <svg viewBox={viewBox} aria-hidden="true" focusable="false">
       <defs>
         <pattern id="map-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#26352e" strokeWidth="1" /></pattern>
@@ -91,19 +105,18 @@ export function GraphMap({
         const [x2, y2] = project(city, to.lat, to.lng);
         return <line key={road.id} x1={x1} y1={y1} x2={x2} y2={y2} className={`graph-road ${road.blocked ? 'blocked' : ''}`} />;
       })}
-      <polyline points={routePoints} className="graph-route-shadow" />
-      <polyline points={routePoints} className="graph-route-line" filter="url(#route-glow)" />
-      {cautionRoads.map(({ road, point: [x, y] }) => <g key={road.id} className="graph-warning">
+      {showRoute && <><polyline points={routePoints} className="graph-route-shadow" /><polyline points={routePoints} className="graph-route-line" filter="url(#route-glow)" /></>}
+      {showIncidents && cautionRoads.map(({ road, point: [x, y] }) => <g key={road.id} className="graph-warning">
         <path d={`M ${x} ${y - 15} l 14 26 h -28 z`} />
         <text x={x} y={y + 7} textAnchor="middle">!</text>
         <title>{road.blocked ? 'Road blocked' : 'High congestion'} · {road.name}</title>
       </g>)}
-      {scenarioPoints.map(({ scenario, point: [x, y] }) => <g key={scenario.id} className={`graph-incident ${scenario.type} ${scenario.severity}`}>
+      {showIncidents && scenarioPoints.map(({ scenario, point: [x, y] }) => <g key={scenario.id} className={`graph-incident ${scenario.type} ${scenario.severity}`}>
         <circle cx={x} cy={y} r="18" />
         <text x={x} y={y + 5} textAnchor="middle">{indicator[scenario.type] ?? '!'}</text>
         <title>{scenario.name} · {scenario.severity} severity · simulated</title>
       </g>)}
-      {city.signals.map((signal) => {
+      {showSignals && city.signals.map((signal) => {
         const node = nodeById.get(signal.nodeId);
         if (!node) return null;
         const [x, y] = project(city, node.lat, node.lng);
@@ -122,8 +135,14 @@ export function GraphMap({
       {ambulancePoint && <g className="graph-ambulance animated" transform={`translate(${ambulancePoint[0]} ${ambulancePoint[1]})`}>
         <circle cx="0" cy="0" r="19" /><circle cx="0" cy="0" r="9" /><text x="0" y="4" textAnchor="middle">A</text><title>Ambulance simulated location</title>
       </g>}
+      {otherVehicles.map((vehicle) => {
+        const [x, y] = project(city, vehicle.lat, vehicle.lng);
+        return <g key={vehicle.id} className={`graph-other-vehicle ${vehicle.type}${vehicle.selected ? ' selected' : ''}`} transform={`translate(${x} ${y})`}>
+          <circle r={vehicle.selected ? 16 : 13} /><text textAnchor="middle" y="4">{vehicle.type === 'bus' ? 'B' : vehicle.type === 'ambulance' ? 'A' : 'V'}</text><title>{vehicle.id} · simulated {vehicle.type}</title>
+        </g>;
+      })}
     </svg>
     <div className="graph-map-label"><span className="live-dot" />{followAmbulance ? 'FOLLOW AMBULANCE' : 'ROUTE GRAPH'} · BENGALURU DEMO</div>
-    <div className="graph-map-legend" aria-label="Map legend"><span><i className="legend-route" />Emergency route</span><span><i className="legend-signal" />Signals</span><span><i className="legend-warning" />Road caution</span></div>
+    <div className="graph-map-legend" aria-label="Map legend"><span><i className="legend-route" />{routeTone === 'standard' ? 'Selected route' : 'Emergency route'}</span><span><i className="legend-signal" />Signals</span><span><i className="legend-warning" />Road caution</span></div>
   </div>;
 }

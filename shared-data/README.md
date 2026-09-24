@@ -9,7 +9,7 @@ congestion levels are invented demo values; no real traffic source is connected.
 - `roads.json`: endpoints, positive distance in meters and time in seconds,
   `low | medium | high` congestion, and boolean blockage.
 - `signals.json`: junction references; `red | yellow | green` state and
-  `normal | manual | emergency` mode. Mode is metadata only in Phase 1.
+  `normal | manual | emergency` demo mode. Phase 4 mock changes are in memory.
 - `bases.json`, `hospitals.json`: entities referencing node IDs. Their IDs match
   their node IDs in this small dataset, so the documented API examples work.
 - `adjacency.json`: every road listed at both endpoints, for future routing.
@@ -19,6 +19,10 @@ congestion levels are invented demo values; no real traffic source is connected.
   applies local route and map overlays; fixture files stay unchanged. To create
   a Node mock incident, send `roadId`, `type`, `severity`, and boolean `blocked`
   to `POST /api/incidents`.
+- `vehicles.json`: one ambulance and one bus for the Phase 4 traffic operations
+  view. Each vehicle references origin, current, and destination node IDs and
+  supplies a fictional number, crew, speed, status, and priority. Only the
+  ambulance follows Phase 3 movement, through a browser-local snapshot.
 
 When adding a road, update both adjacency entries. When renaming an ID, update all
 references. Run `npm run test:data` to check graph integrity. Restart Node (or call

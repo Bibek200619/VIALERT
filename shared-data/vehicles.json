@@ -1,0 +1,28 @@
+[
+  {
+    "id": "AMB-07",
+    "type": "ambulance",
+    "vehicleNumber": "KA-01-EM-2047",
+    "status": "active",
+    "priority": "critical",
+    "originNodeId": "BASE-1",
+    "currentNodeId": "BASE-1",
+    "destinationNodeId": "HOSP-2",
+    "emergencyType": "Medical response",
+    "crew": "Demo ambulance crew",
+    "speedKph": 42
+  },
+  {
+    "id": "BUS-12",
+    "type": "bus",
+    "vehicleNumber": "KA-01-F-5512",
+    "status": "active",
+    "priority": "normal",
+    "originNodeId": "INDIRANAGAR",
+    "currentNodeId": "INDIRANAGAR",
+    "destinationNodeId": "ELECTRONIC-CITY",
+    "emergencyType": "Scheduled service",
+    "crew": "Demo transit operator",
+    "speedKph": 28
+  }
+]
