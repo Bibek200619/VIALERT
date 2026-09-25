@@ -42,8 +42,10 @@ try {
   assert.equal(forecast.predictions.length, 6);
   assert.equal(forecast.predictions[0].predictedCongestion, 'severe');
   assert.ok(forecast.predictions[0].factors.includes('weekday office peak'));
-  assert.match(await (await get(clientOrigin)).text(), /VIALERT/);
-  console.log('PASS city fixtures, emergencies, legacy predictions, six Phase 6 batch forecasts, and frontend HTML');
+  for (const route of ['/', '/demo', '/ambulance', '/traffic', '/simulation']) {
+    assert.match(await (await get(`${clientOrigin}${route}`)).text(), /VIALERT/, `${route} refresh must return the app shell`);
+  }
+  console.log('PASS city fixtures, emergencies, six batch forecasts, and all five browser-route refreshes');
 } catch (error) {
   console.error('Smoke check failed. Start all three services with npm run dev.');
   console.error(error.message);

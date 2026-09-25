@@ -1,9 +1,9 @@
 # VIALERT · Emergency mobility demo
 
-VIALERT is a phased emergency mobility demo. Phase 6 adds explainable future
-traffic risk to the Phase 5 incident-aware router, Phase 4 traffic operations
-dashboard, Phase 3 simulation, Phase 2 ambulance dashboard, and Phase 1 mock
-services and Bengaluru-inspired shared JSON graph.
+VIALERT is a replayable emergency mobility demo. Phase 7 adds a judge guide,
+one-click baseline reset, and final presentation polish to the ambulance,
+simulation, traffic operations, incident-aware routing, and explainable traffic
+prediction workspaces.
 All journeys, incidents, conditions, and signal states are **demo only**. There is
 no real emergency dispatch, traffic control, GPS tracking, or measured prediction
 accuracy.
@@ -33,16 +33,18 @@ npm run dev:ai
 
 | Service | Address | Purpose |
 | --- | --- | --- |
-| React + Vite | http://localhost:5173/traffic | Traffic operations, ambulance dashboard, and simulation control center |
+| React + Vite | http://localhost:5173/demo | Judge guide, ambulance, traffic operations, and simulation |
 | Node API | http://127.0.0.1:4000/api/health | In-memory city, emergency, signal, incident, and reset APIs |
 | FastAPI | http://127.0.0.1:8000/health | Deterministic single and batch traffic forecasts |
 | API explorer | http://127.0.0.1:8000/docs | Interactive FastAPI schema and requests |
 
 Vite proxies `/api/*` to Node and `/ai/*` to FastAPI (removing `/ai`). Direct
-browser routes are `/ambulance`, `/traffic`, and `/simulation`; refreshing any
-route in local development returns the Vite app. Unknown routes redirect to
-`/ambulance`. The dashboard checks Node health and reports unavailable services
-honestly, then uses the checked-in city graph as a fallback. To change
+browser routes are `/demo`, `/ambulance`, `/traffic`, and `/simulation`; refreshing
+any route in local development returns the Vite app. `/` opens `/demo`; unknown
+routes redirect to `/ambulance`. The dashboard checks Node health and reports
+unavailable services honestly, then uses the checked-in city graph as a fallback.
+FastAPI outages are labeled and use the same deterministic forecast rules in the
+browser. The checked-in Node default is **4000**, not 3001. To change
 ports/origins, see `client/.env.example` and `server-node/.env.example`; the AI
 service accepts `CORS_ORIGINS` as an environment variable. Default settings work
 without copying any env files. Stop an existing service if a default port is busy;
@@ -61,6 +63,27 @@ Individual checks: `npm run build`, `npm run test:data`, `npm run test:client`,
 local servers and verify validation and reset without modifying fixture files.
 The frontend production bundle is written to `client/dist/`; deployment is
 outside the current phase.
+
+## Phase 7 judge demo and replay
+
+Open [the demo guide](http://localhost:5173/demo) and select **Start judge demo**.
+This restores a clean baseline and opens `/ambulance`. The compact guide links
+the route, future-risk desk, incident simulation, and operator response into a
+three-minute story. **Reset demo** is also available in every workspace header.
+It asks Node to restore its in-memory demo state, clears the known same-browser
+simulation snapshot, local incidents, and forecast settings, and reloads open
+VIALERT tabs in the same browser profile. Repeated resets are safe. If Node is
+offline, browser data still resets and the guide explicitly reports the partial
+backend reset; retry once Node returns. This is a presentation reset, not a
+cross-device or production-data operation.
+
+The [three- and five-minute judge script](06-project-management/DEMO_SCRIPT.md)
+gives exact pages, clicks, expected results, recovery steps, and talking points.
+Use the [screenshot checklist](06-project-management/SCREENSHOT_CHECKLIST.md)
+to capture the six presentation states if automated captures are unavailable.
+For a seven-day final round, the next work would be validated real traffic data,
+calibrated travel-time and forecast models, authorized integration design, and
+multi-device state synchronization—not more simulated claims.
 
 ## Phase 2 ambulance dashboard
 
@@ -218,6 +241,7 @@ weights. Phase 3 adds a single-vehicle, timed client-side simulation using those
 same nodes, roads, routes, and mock incidents. Phase 4 adds an operator view and
 simulated signal controls. Phase 5 adds dynamic mock incident-aware routing;
 Phase 6 adds explainable, optional forecast costs and dashboard risk overlays.
+Phase 7 adds the guided replay/reset flow and final demo documentation.
 Multi-vehicle movement, WebSockets, live GPS, real
 dispatch, and live signal control remain future work. `socketClient.ts` remains a reserved placeholder.
 

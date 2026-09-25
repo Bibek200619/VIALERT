@@ -53,5 +53,14 @@
 
 ## Phase 7: Demo Polish
 
-- Add curated one-click judge scenarios and capture screenshots/recording.
-- Prepare final pitch and presentation flow.
+- Complete: `/demo` gives a compact four-stop judge path through the three
+  workspaces, service readiness, demo-only boundaries, and a baseline start.
+- Complete: global Reset demo restores browser demo keys and Node in-memory
+  state when online; same-browser tabs reload, and partial offline resets are
+  reported honestly. Existing local journey/simulation controls remain intact.
+- Complete: responsive navigation, wrapping operational labels, focus/readability
+  finishing, three- and five-minute scripts, recovery steps, and screenshot
+  checklist. Build, unit, API, smoke, and browser flows are verified before PR.
+- Final-round candidates: authorized live data, calibrated routing/prediction,
+  multi-device sync, deployment/monitoring, and field validation. No production
+  traffic or emergency infrastructure is connected in this MVP.
