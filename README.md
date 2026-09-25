@@ -1,18 +1,126 @@
-# VIALERT · Emergency mobility demo
+# VIALERT
 
-VIALERT is a replayable emergency mobility demo. Phase 7 adds a judge guide,
-one-click baseline reset, and final presentation polish to the ambulance,
-simulation, traffic operations, incident-aware routing, and explainable traffic
-prediction workspaces.
-All journeys, incidents, conditions, and signal states are **demo only**. There is
-no real emergency dispatch, traffic control, GPS tracking, or measured prediction
-accuracy.
+VIALERT is a local emergency mobility **simulation**. It shows an ambulance route, lets a traffic operator change mock signals and incidents, and explains predicted congestion on a small Bengaluru-inspired road graph. The demo is designed for repeatable presentations; it does not connect to real ambulances, traffic lights, GPS, or live traffic feeds.
 
-## Local development
+## Current status
 
-Prerequisites: Node.js **22.12+** with npm, Python **3.11+**, and
-[uv](https://docs.astral.sh/uv/getting-started/installation/). `.nvmrc` selects Node
-22 for nvm users. No API keys, database, or paid services are needed.
+The repository contains a working browser demo with four workspaces, an Express mock API, and a FastAPI forecast service. The driver and operator views use the same fictional graph and show the effects of simulated incidents on route choice and ETA. The traffic forecast is a transparent rules calculation with a matching browser fallback.
+
+Live in this repository: route guidance, stepped and timed ambulance movement, scenario replay, mock incident and signal controls, operator alerts, forecast overlays, a guided reset, and OpenStreetMap or SVG map display. Planned integrations such as real dispatch, GPS, traffic hardware, a database, and WebSockets are not implemented.
+
+## What you can do
+
+| Workspace | URL | What it shows |
+| --- | --- | --- |
+| Demo guide | `/demo` | A guided presentation and a reset that restores the demo baseline. |
+| Ambulance driver | `/ambulance` | Hospital selection, A* route, trip progress, ETA, next turn, signal awareness, and optional browser voice guidance. |
+| Traffic operations | `/traffic` | Demo fleet, map, alerts, incident desk, mock signal controls, and future congestion risk. |
+| Simulation | `/simulation` | A timed or stepped ambulance journey, scenario controls, reroutes, event timeline, map, and perspective camera scenes. |
+
+The maps use Leaflet with OpenStreetMap tiles when available and fall back to an SVG view of the same city graph. Map and Follow ambulance use map camera modes; Driver, Third-person, and Rear-view render interactive 3D-style perspective scenes from the simulation state. These views are presentation tools, not vehicle cameras.
+
+## Architecture at a glance
+
+```text
+User
+  │
+  ▼
+React + Vite frontend (frontend/)
+  ├── /demo ─────────── guided presentation and reset
+  ├── /ambulance ────── driver route, ETA, and signals
+  ├── /traffic ──────── fleet, incidents, alerts, and forecasts
+  ├── /simulation ───── timed journey and scenario replay
+  │
+  ├── Browser A* planner ─── route and road-cost calculation
+  ├── Browser storage ────── same-browser journey and settings
+  ├── /api/* ── Vite proxy ──► Express API (backend/server-node/)
+  │                           └── city data + disposable operations state
+  └── /ai/* ── Vite proxy ───► FastAPI (backend/server-ai/)
+                              └── deterministic forecast rules
+
+shared-data/ JSON fixtures ───► frontend + Express API + FastAPI
+```
+
+The frontend owns the simulation clock, ambulance movement, and A* route calculation. Congestion, incidents, closures, mock priority signals, and optional forecast costs affect the route; closed roads are excluded. The latest simulation snapshot and forecast settings are shared through storage in the **same browser profile**.
+
+Express serves city data and holds mock signal changes, incidents, emergencies, alerts, and events in process memory. FastAPI calculates explainable traffic forecasts without storing requests. Both services read the fictional fixtures in `shared-data/`; neither writes changes back to those JSON files. When a service is unavailable, the frontend labels its local city-data or forecast fallback. The app does not synchronize journeys across devices.
+
+### Example: an incident changes a route
+
+```mermaid
+sequenceDiagram
+    participant O as Traffic operator
+    participant N as Node API
+    participant B as Browser workspaces
+    participant R as A* planner
+    O->>N: Create mock road incident
+    N-->>O: Store incident in memory
+    B->>N: Poll current incidents and signals
+    N-->>B: Return mock state
+    B->>R: Recalculate with changed road costs
+    R-->>B: New route, ETA, or no-route state
+    B-->>O: Update map, alert, and route explanation
+```
+
+The Simulation page can also activate local scenario presets. Its current journey is published through browser storage for the other pages in that browser. The Node service records mock simulation status and incidents, but does not advance the browser clock or calculate routes.
+
+## Main code areas
+
+The **frontend** starts at `frontend/src/main.tsx`. `frontend/src/app/routes.tsx` connects the four pages, `frontend/src/services/apiClient.ts` calls both APIs, `frontend/src/features/ambulance/ambulanceData.ts` implements the graph route planner, and `frontend/src/features/simulation/simulationEngine.ts` advances the local journey. The traffic and prediction features assemble operator state and forecasts; reusable maps and layout live in `frontend/src/components/`.
+
+The **backend** has two independent services. `backend/server-node/src/app.js` mounts the Express API, `src/routes/api.js` declares endpoints, and `src/data/store.js` loads JSON fixtures into a disposable store. `backend/server-ai/app/main.py` declares FastAPI endpoints, `model.py` scores deterministic forecasts, and `schemas.py` validates inputs. The services do not share a database; both read fixture files from `shared-data/`.
+
+## Repository structure
+
+```text
+VIALERT/
+├── frontend/                         # React, TypeScript, Vite, and browser UI
+│   ├── src/app/                      # App shell and browser routes
+│   ├── src/pages/                    # Demo, ambulance, traffic, simulation pages
+│   ├── src/features/
+│   │   ├── ambulance/                # Driver journey and A* planner
+│   │   ├── traffic/                  # Operator dashboard and controls
+│   │   ├── simulation/               # Scenario engine, maps, camera scenes
+│   │   ├── routing/                  # Incidents and dynamic road costs
+│   │   ├── prediction/               # Forecast UI and local rule fallback
+│   │   └── demo/                     # Guided reset
+│   ├── src/components/              # Reusable UI and maps
+│   ├── src/services/                # HTTP API client and socket placeholder
+│   ├── src/styles/                  # Shared CSS
+│   ├── public/                      # Static assets
+│   └── vite.config.ts               # Local server and API proxies
+├── backend/
+│   ├── server-node/                  # Express mock operations API
+│   │   ├── src/routes/               # HTTP endpoints
+│   │   ├── src/services/             # Emergency, signal, incident logic
+│   │   ├── src/data/                 # In-memory store
+│   │   └── test/                     # API checks
+│   └── server-ai/                    # FastAPI forecast API
+│       ├── app/main.py               # HTTP endpoints
+│       ├── app/model.py              # Deterministic scoring
+│       ├── app/schemas.py            # Request and response models
+│       └── tests/                    # Forecast checks
+├── docs/
+│   ├── README.md                     # Documentation index
+│   ├── PROJECT_OVERVIEW.md           # MVP vision
+│   ├── 00-simulation-demo/           # Scenarios and engine notes
+│   ├── 01-ambulance-dashboard/       # Driver requirements
+│   ├── 02-traffic-incharge-dashboard/ # Operator requirements
+│   ├── 03-ai-traffic-prediction/     # Forecast design
+│   ├── 04-backend-realtime/          # API contract and realtime proposal
+│   ├── 05-map-data-routing/          # Graph data and A* notes
+│   └── 06-project-management/        # Build plan, demo script, file map
+├── shared-data/                     # Fictional city graph and forecast inputs
+├── scripts/                         # Data and running-service checks
+├── package.json                     # Root commands and npm workspaces
+└── README.md                        # Project guide
+```
+
+**Where to put new work:** Put browser pages, components, hooks, and styling in `frontend/`. Put Express API work in `backend/server-node/` and forecast service work in `backend/server-ai/`. Put project explanations, contracts, demo scripts, and design notes in `docs/`. Put shared fictional JSON fixtures in `shared-data/`, and root-level tooling in `scripts/`. See the [detailed file map](docs/06-project-management/FILE_STRUCTURE.md).
+
+## Run locally
+
+Prerequisites: Node.js **22.12+**, npm, Python **3.11+**, and [uv](https://docs.astral.sh/uv/getting-started/installation/). No API keys, database, or paid service are needed.
 
 From the repository root:
 
@@ -22,288 +130,65 @@ npm run setup:ai
 npm run dev
 ```
 
-`npm run dev` starts all three processes and stops the others if one exits. Use
-Ctrl+C to stop them. Or run these in three separate terminals:
+`npm run dev` starts the frontend and both APIs. Stop all three with Ctrl+C. To run them in separate terminals, use `npm run dev:frontend`, `npm run dev:node`, and `npm run dev:ai`.
 
-```bash
-npm run dev:client
-npm run dev:node
-npm run dev:ai
-```
-
-| Service | Address | Purpose |
+| Process | Local address | Purpose |
 | --- | --- | --- |
-| React + Vite | http://localhost:5173/demo | Judge guide, ambulance, traffic operations, and simulation |
-| Node API | http://127.0.0.1:4000/api/health | In-memory city, emergency, signal, incident, and reset APIs |
-| FastAPI | http://127.0.0.1:8000/health | Deterministic single and batch traffic forecasts |
-| API explorer | http://127.0.0.1:8000/docs | Interactive FastAPI schema and requests |
+| Frontend | [http://localhost:5173/demo](http://localhost:5173/demo) | Browser workspaces and local simulation. |
+| Node API | [http://127.0.0.1:4000/api/health](http://127.0.0.1:4000/api/health) | Mock operations and city data. |
+| AI API | [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health) | Deterministic traffic forecasts. |
+| AI API explorer | [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) | Interactive FastAPI contract. |
 
-Vite proxies `/api/*` to Node and `/ai/*` to FastAPI (removing `/ai`). Direct
-browser routes are `/demo`, `/ambulance`, `/traffic`, and `/simulation`; refreshing
-any route in local development returns the Vite app. `/` opens `/demo`; unknown
-routes redirect to `/ambulance`. The dashboard checks Node health and reports
-unavailable services honestly, then uses the checked-in city graph as a fallback.
-FastAPI outages are labeled and use the same deterministic forecast rules in the
-browser. The checked-in Node default is **4000**, not 3001. To change
-ports/origins, see `client/.env.example` and `server-node/.env.example`; the AI
-service accepts `CORS_ORIGINS` as an environment variable. Default settings work
-without copying any env files. Stop an existing service if a default port is busy;
-Vite deliberately refuses to choose a different port silently.
+Vite proxies `/api/*` to Node and `/ai/*` to FastAPI, removing `/ai` before forwarding. `/` opens `/demo`; unknown browser routes redirect to `/ambulance`. The frontend uses port 5173, Node uses 4000, and FastAPI uses 8000. Optional settings are in [`frontend/.env.example`](frontend/.env.example) and [`backend/server-node/.env.example`](backend/server-node/.env.example). FastAPI accepts a `CORS_ORIGINS` environment variable. The frontend production bundle is written to `frontend/dist/`.
 
-## Checks
+## A quick demo flow
+
+1. Open `/demo` and select **Start judge demo** to reset the current demo state.
+2. In `/ambulance`, choose a hospital and start the simulated journey. Inspect the route, ETA, and upcoming signals.
+3. In `/simulation`, step the ambulance and activate the road blockage or accident scenario on `R3 · Central–Koramangala Link`. The A* route and timeline explain the change.
+4. In `/traffic`, inspect the ambulance, incident, alert, and route. Change a mock signal or create another incident. The traffic page also shows future risk scores for six corridors.
+5. Use **Reset demo** in any workspace to return the browser and available Node API to their baseline. If Node is offline, the browser resets locally and reports that the backend reset was partial.
+
+The [judge demo script](docs/06-project-management/DEMO_SCRIPT.md) has exact clicks and recovery steps. Simulation and Traffic should be open in the **same browser profile** to share live journey progress.
+
+## Data and API ownership
+
+| Data or action | Source and lifetime |
+| --- | --- |
+| Nodes, roads, adjacency, signals, hospitals, bases, vehicles, scenarios, forecast examples | JSON in `shared-data/`; committed fixtures. |
+| Ambulance movement, active simulation scenarios, event timeline | Frontend state; the latest journey snapshot is shared in the same browser profile. |
+| Operator incidents, mock signal changes, emergencies, alerts, operator events | Node process memory; cleared by reset or server restart. |
+| Forecast settings and offline incident fallback | Browser storage for the same browser profile. |
+| Forecast responses | Calculated by FastAPI rules or the labeled frontend fallback; no forecast database. |
+
+The main Node endpoints are `GET /api/city`, `GET /api/vehicles`, `GET /api/signals`, `PATCH /api/signals/:signalId`, `GET/POST /api/incidents`, `DELETE /api/incidents/:incidentId`, and the simulation/reset and operations endpoints. The AI endpoints include `POST /predict/forecast` and `POST /predict/batch`. See the [Node API reference](backend/server-node/README.md), [AI API reference](backend/server-ai/README.md), and [combined API inventory](docs/04-backend-realtime/API_SPEC.md).
+
+## Project documentation
+
+All topic guides live under [`docs/`](docs/README.md):
+
+| Folder | Contents |
+| --- | --- |
+| [`00-simulation-demo`](docs/00-simulation-demo/README.md) | Scenarios, replay behavior, simulation engine. |
+| [`01-ambulance-dashboard`](docs/01-ambulance-dashboard/README.md) | Driver features and UI requirements. |
+| [`02-traffic-incharge-dashboard`](docs/02-traffic-incharge-dashboard/README.md) | Operator features and UI requirements. |
+| [`03-ai-traffic-prediction`](docs/03-ai-traffic-prediction/README.md) | Forecast design, inputs, and model contract. |
+| [`04-backend-realtime`](docs/04-backend-realtime/README.md) | API contracts and proposed realtime events. |
+| [`05-map-data-routing`](docs/05-map-data-routing/README.md) | City data format and A* routing rules. |
+| [`06-project-management`](docs/06-project-management/FILE_STRUCTURE.md) | File map, build plan, acceptance criteria, demo script. |
+
+The detailed [shared-data guide](shared-data/README.md) explains fixture IDs and editing rules. Some design documents describe the broader MVP vision; the runtime behavior in this README and the service READMEs describes what is currently implemented. The WebSocket event document is a proposal: `frontend/src/services/socketClient.ts` is a reserved stub, and the current app uses polling and browser storage.
+
+## Available commands
 
 ```bash
-npm run check        # TypeScript + frontend build, shared-data, Node, and Python tests
-npm run test         # Includes routing, journey, voice-copy, and API-fallback tests
-npm run smoke        # With npm run dev running: live health, proxy, data, and HTML checks
+npm run build        # TypeScript and Vite production build
+npm run test:data    # Check fixture graph integrity
+npm run test:frontend # Frontend checks
+npm run test:node    # Node API checks
+npm run test:ai      # FastAPI checks
+npm run check        # Build and all checks
+npm run smoke        # Read-only service checks while npm run dev is running
 ```
 
-Individual checks: `npm run build`, `npm run test:data`, `npm run test:client`,
-`npm run test:node`, and `npm run test:ai`. The smoke check is read-only. The Node tests use disposable
-local servers and verify validation and reset without modifying fixture files.
-The frontend production bundle is written to `client/dist/`; deployment is
-outside the current phase.
-
-## Phase 7 judge demo and replay
-
-Open [the demo guide](http://localhost:5173/demo) and select **Start judge demo**.
-This restores a clean baseline and opens `/ambulance`. The compact guide links
-the route, future-risk desk, incident simulation, and operator response into a
-three-minute story. **Reset demo** is also available in every workspace header.
-It asks Node to restore its in-memory demo state, clears the known same-browser
-simulation snapshot, local incidents, and forecast settings, and reloads open
-VIALERT tabs in the same browser profile. Repeated resets are safe. If Node is
-offline, browser data still resets and the guide explicitly reports the partial
-backend reset; retry once Node returns. This is a presentation reset, not a
-cross-device or production-data operation.
-
-The [three- and five-minute judge script](06-project-management/DEMO_SCRIPT.md)
-gives exact pages, clicks, expected results, recovery steps, and talking points.
-Use the [screenshot checklist](06-project-management/SCREENSHOT_CHECKLIST.md)
-to capture the six presentation states if automated captures are unavailable.
-For a seven-day final round, the next work would be validated real traffic data,
-calibrated travel-time and forecast models, authorized integration design, and
-multi-device state synchronization—not more simulated claims.
-
-## Phase 2 ambulance dashboard
-
-Open [http://localhost:5173/ambulance](http://localhost:5173/ambulance). Choose
-one of the shared demo hospitals, select **Start journey**, **Pause journey**, or
-**Reset journey**, and watch the ambulance marker progress over the route. Each
-demo tick advances simulated time deterministically; the displayed route, ETA,
-next turn, and upcoming signal list follow that progress. Reset also asks the
-Node API to clear its in-memory mock records when the service is available.
-
-The map uses Leaflet with standard OpenStreetMap raster tiles and visible OSM
-attribution. Internet access is needed for street tiles. If tiles fail, the page
-switches to an SVG view of the shared city graph; the route, base, hospital,
-signals, and high-congestion/blocked-road markers remain visible. A
-`VITE_OSM_TILE_URL` environment value can point Leaflet at another compatible
-tile service. Browser speech synthesis is optional: enable voice guidance and use
-**Test voice**. Browser support and permissions vary, and this feature is not
-connected to emergency systems.
-
-The traffic-control and simulation pages are independently available at `/traffic`
-and `/simulation`.
-
-## Phase 3 simulation control center
-
-Open [http://localhost:5173/simulation](http://localhost:5173/simulation). The
-default demo is one ambulance from Central Ambulance Base to South Care Hospital.
-Use **Start simulation**, **Pause**, **Resume**, or **Step 1 tick**; choose 1×,
-2×, or 5× speed. The event timeline records scenario activations, junctions,
-signals, reroutes, pauses, and arrival. **Restart current scenario** returns the
-vehicle to its configured base while keeping current local scenario effects;
-**Return to default route** clears them; **Reset simulation** also restores the
-vehicle and speed defaults and clears the in-memory Node API state when available.
-
-To replay a blockage demo, choose **Road blockage at Koramangala**, leave/select
-`Central–Koramangala Link`, and activate it. The local A* route avoids the blocked
-segment when an alternate route exists. For a no-route state, activate flood on
-`South Hospital Access` and blockage on `Silk Board–South Hospital Link`; remove
-or deactivate one of those scenarios to recover. Rain, construction, congestion,
-and accident scenarios change local road cost and are shown on the map, environment
-panel, route status, and event timeline. Reset restores the same initial state.
-
-The map uses Leaflet/OpenStreetMap tiles without an API key and automatically
-falls back to the same shared-graph SVG view if tiles are unavailable. Map and
-Follow ambulance are implemented camera modes; Driver, Third-person, and Rear-view
-are visibly labeled presentation placeholders. Optional voice alerts use browser
-speech synthesis when available; the event timeline remains the written source of
-truth. Simulation state and movement are local and deterministic. The Node API
-records start/pause and mock incidents in memory; no WebSocket, real GPS, real
-signal integration, or live emergency system is used.
-
-Phase 3 Node endpoints are `GET /api/simulation/state`, `POST /api/simulation/start`,
-`POST /api/simulation/pause`, `POST /api/simulation/reset`, `POST /api/incidents`,
-and `DELETE /api/incidents/:incidentId`. See [API contracts](04-backend-realtime/API_SPEC.md).
-
-## Phase 4 traffic operations center
-
-Open [http://localhost:5173/traffic](http://localhost:5173/traffic). The fleet list
-contains one demo ambulance and one demo bus from `shared-data/vehicles.json`.
-Filter and select a vehicle to see its origin, location, destination, route,
-speed, ETA, and upcoming signal. The map uses Leaflet/OpenStreetMap tiles, with a
-manual graph toggle and automatic SVG graph fallback when tiles fail. Select
-**Focus selected** or **Fit all vehicles**, and toggle route, signal, and incident
-layers. Metrics and the event log describe simulated city state.
-
-The signal console updates only mock in-memory state. Choose a signal, then
-**Set green/yellow/red**; enabling **emergency priority** requires explicit
-confirmation. Alerts can be filtered and acknowledged. When Node is offline,
-the dashboard uses checked-in vehicle and city data; signal changes and derived
-alert acknowledgements remain local to the browser.
-
-Keep `/simulation` open in another tab of the same browser to see its ambulance
-position, ETA, scenario alerts, and timeline events reflected in `/traffic`.
-This uses a browser-local snapshot, polled by the traffic view. Node separately
-shares mock signals, incidents, alerts, and operator events through polling.
-The simulation feed is not cross-device or persistent. Closing the simulation
-tab stops its timer; the traffic page retains its last snapshot for up to ten
-minutes, then returns to the fixture route. None of these controls operate real
-vehicles or lights.
-
-For a judge demo: open both tabs; step or start the ambulance; activate a road
-blockage in Simulation; return to Traffic to inspect its new location, route
-warning, and incident marker. Change `S1` to yellow, enable priority through the
-confirmation card, acknowledge the new alert, then clear the visible event log.
-
-## Phase 5 incident-aware routing
-
-The shared A* planner now applies explicit congestion, incident, rain, closure,
-and simulated priority-signal costs. Open `/ambulance` to see the baseline
-corridor. In `/simulation`, activate an accident on `R3 · Central–Koramangala
-Link` or the Road blockage preset on the same road. The route recalculates from
-the ambulance's current graph node, shows a reason and ETA change, and draws
-the previous path as a muted dashed line. The timeline records the change.
-Return to `/ambulance` and `/traffic` in the **same browser** to see the updated
-driver route, operator alert/event, ETA, map, and incident state. The driver
-page follows the Simulation journey while it is active; use Simulation controls
-to move or reset it.
-
-The Traffic incident desk can also create an accident, construction, heavy
-rain, flood, congestion, or manual road block on a chosen graph road. Its
-incidents are held in the Node mock API and polled into Simulation and
-Ambulance; when Node is offline, operator-created incidents are stored only in
-the same browser. A blocked road is excluded from A*. For a no-route demo,
-close both `R10 · South Hospital Access` and `R12 · Silk Board–South Hospital
-Link`; the UI names the closures and stays usable until one is cleared.
-
-This is a hardcoded Bengaluru-inspired graph with heuristic costs, not real
-traffic or live dispatch. Phase 5 itself does not add live prediction input;
-Phase 6's forecast desk remains heuristic and browser/API-local. There is no
-production GPS, authority system, database, or WebSocket service. See the
-[routing notes](05-map-data-routing/ASTAR_ROUTING.md) and
-[API contract](04-backend-realtime/API_SPEC.md).
-
-## Phase 6 traffic prediction
-
-Open [Traffic Operations](http://localhost:5173/traffic) and use **Prediction
-desk**. Six roads from the shared graph are scored for a selectable demo time,
-day, weather, holiday, nearby event, current congestion, local incidents, and
-simulated priority signals. Select a corridor to inspect its 0–100 risk, next
-30-minute window, contributing factors, confidence **label**, and recommended
-operator/routing action. The map's **Future risk** layer uses dashed amber/red
-road overlays. **Recalculate** requests FastAPI again; if it is offline, an
-identical deterministic browser rule displays a labeled local fallback.
-
-High and severe forecasts add a transparent 1.15× or 1.30× road-cost factor
-to the Ambulance and Traffic A* views when **Apply forecast cost to demo
-routes** is enabled. The driver view names the affected road and demo ETA
-change. Simulation shows a scenario-linked forecast insight but preserves its
-Phase 3 incident-only replay timing. The forecast settings are shared between
-workspaces in the same browser. Node incidents or simulation scenarios update
-the forecast inputs; neither a live feed nor a trained model is involved.
-
-For a judge demo, keep the default weekday 18:00 setting and point to severe
-Silk Board risk. Set **Heavy rain** to raise several road risks and see R3 add
-roughly three minutes to the ambulance route; visit `/ambulance` to see that
-explanation. In `/simulation`, activate an accident on R3 and inspect the
-scenario-linked outlook and reroute timeline. Return to `/traffic`, select
-Koramangala, and show the accident factor and operator pre-action. Clear the
-scenario and weather assumption to return to baseline. These are deterministic
-mock values, not measured travel-time or forecast accuracy.
-
-## Current MVP foundation and boundaries
-
-- Dark VIALERT navigation shell with four browsable routes, including the judge guide at `/demo`.
-- Shared data: nine nodes, twelve road links, six signals, one base, two fictional
-  hospitals, six editable scenario presets, six Phase 6 forecast inputs, and two demo vehicles.
-- Validated mock APIs with disposable in-memory state and a reset endpoint.
-- Legacy Phase 1 rule-based predictions and separate Phase 6 factor-based
-  forecasts. Confidence labels are heuristic, not calibrated accuracy. No
-  model is trained.
-
-The ambulance page reads health, city, and mock emergency data through
-`client/src/services/apiClient.ts`; starting a trip posts a mock emergency and
-reset clears mock API state when Node is available. Its A* route planner reads the
-shared node, road, and adjacency fixtures and applies the documented congestion
-weights. Phase 3 adds a single-vehicle, timed client-side simulation using those
-same nodes, roads, routes, and mock incidents. Phase 4 adds an operator view and
-simulated signal controls. Phase 5 adds dynamic mock incident-aware routing;
-Phase 6 adds explainable, optional forecast costs and dashboard risk overlays.
-Phase 7 adds the guided replay/reset flow and final demo documentation.
-Multi-vehicle movement, WebSockets, live GPS, real
-dispatch, and live signal control remain future work. `socketClient.ts` remains a reserved placeholder.
-
-## Code and contracts
-
-```text
-client/         React + Vite + TypeScript route-based frontend
-server-node/    Node.js + Express mock API
-server-ai/      Python + FastAPI mock predictions
-shared-data/    Editable Bengaluru-inspired JSON fixtures
-scripts/        Data integrity tests and live smoke checks
-```
-
-- [Node API contracts and examples](server-node/README.md)
-- [FastAPI setup, prediction rules, and examples](server-ai/README.md)
-- [Shared data format and editing rules](shared-data/README.md)
-- [API inventory](04-backend-realtime/API_SPEC.md)
-- [Build plan and next phases](06-project-management/BUILD_PLAN.md)
-
-The following documentation preserves the original MVP vision and future
-integration boundaries; the implementation status above is the current source
-of truth.
-
-## Overall MVP vision
-
-VIALERT is a 24-hour hackathon MVP for emergency vehicle movement, traffic-signal awareness, and traffic prediction. The MVP focuses on one simulation demo with three main deliverables:
-
-1. Ambulance Driver Dashboard
-2. Government / Traffic In-charge Dashboard
-3. AI Traffic Prediction Module
-
-The system uses real-life maps for visualization, a hardcoded city graph for roads and signals, A* routing for emergency paths, and realtime-style updates through WebSocket or timed simulation. The simulation is the main demo layer because the team cannot test with real ambulances and real traffic lights during the hackathon.
-
-## MVP Scope
-
-The MVP should prove the idea visually and functionally. It does not need real government traffic data, real CCTV feeds, or real signal hardware. Those can be explained as future integrations.
-
-## Tech Stack
-
-| Layer | Choice |
-| --- | --- |
-| Frontend | React + Vite |
-| Map visualization | Real-life maps using Leaflet / Mapbox / OpenStreetMap |
-| Backend | Node.js + Python FastAPI |
-| Routing algorithm | A* algorithm |
-| Data | Hardcoded city graph, adjacency file, roads, signals, hospitals |
-| Realtime feel | WebSocket or timed updates |
-| AI prediction | Python model/API using simulated and historical-style features |
-
-## Main User Roles
-
-- Ambulance driver
-- Traffic in-charge / government operator
-- System admin or demo operator
-
-## Documentation Structure
-
-- `00-simulation-demo/`: simulation scenarios, engine, and demo flow
-- `01-ambulance-dashboard/`: driver dashboard requirements and UI flow
-- `02-traffic-incharge-dashboard/`: traffic control dashboard requirements
-- `03-ai-traffic-prediction/`: model design, features, and API
-- `04-backend-realtime/`: backend services and realtime communication
-- `05-map-data-routing/`: city graph, maps, A* routing, data files
-- `06-project-management/`: build plan, acceptance criteria, demo script
+All roads, destinations, congestion values, predictions, and signal controls in this repository are **demo data**. The project has no production dispatch, real signal integration, live GPS feed, database, WebSocket service, or trained prediction model.

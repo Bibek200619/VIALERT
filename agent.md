@@ -17,13 +17,13 @@ You must work according to the VIALERT MVP documentation and the project skill i
 
 Before implementing any task, check the relevant project documentation folders:
 
-- `00-simulation-demo/`
-- `01-ambulance-dashboard/`
-- `02-traffic-incharge-dashboard/`
-- `03-ai-traffic-prediction/`
-- `04-backend-realtime/`
-- `05-map-data-routing/`
-- `06-project-management/`
+- `docs/00-simulation-demo/`
+- `docs/01-ambulance-dashboard/`
+- `docs/02-traffic-incharge-dashboard/`
+- `docs/03-ai-traffic-prediction/`
+- `docs/04-backend-realtime/`
+- `docs/05-map-data-routing/`
+- `docs/06-project-management/`
 
 Use the documentation as the source of truth for:
 
