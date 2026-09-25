@@ -4,6 +4,8 @@ The Node service is a local mock API with in-memory state. All responses include
 `demo: true`; no endpoint dispatches an ambulance, changes a real signal, reads
 live traffic, or persists records. Existing Phase 1 routes and response shapes
 remain available alongside the Phase 3 simulation/incident and Phase 4 operator routes.
+Phase 5 reuses these mock incident endpoints for dynamic browser-side routing;
+it does not add a database or production route service.
 
 ## Node.js API
 
@@ -40,18 +42,25 @@ route, and event history; Node does not own that tick loop.
 
 ### Create an incident
 
-`POST /api/incidents` accepts JSON with all four fields:
+`POST /api/incidents` accepts JSON with four required fields and an optional
+mock source (`origin` is `operator` by default, or `simulation`):
 
 ```json
-{"roadId":"R4","type":"accident","severity":"high","blocked":false}
+{"roadId":"R4","type":"accident","severity":"high","blocked":false,"origin":"operator"}
 ```
 
 Valid types: `accident`, `construction`, `rain`, `heavy-rain` (legacy alias),
 `flood`, `congestion`, `blockage`. Severity is `low`, `medium`, or `high`;
 `blocked` is a boolean. The response is `{incident, demo:true}` with a generated
-ID and creation time. Deleting the incident returns `{incident, demo:true}`.
-Incident updates are independent of the browser simulation engine's road-cost
-model; they provide a simple mock backend record/road overlay.
+ID, creation time, and origin. Deleting the incident returns
+`{incident,demo:true}` and acknowledges its associated mock incident alert.
+Flood and blockage records are always treated as closures even if `blocked`
+was sent as false. The Phase 5 frontend polls operator-origin records and
+applies their costs through the shared A* demo model; simulation-origin records
+are excluded from that external feed to avoid applying the same scenario twice.
+The Node road overlay remains in memory and is not a live traffic source. No
+server-side route mutation endpoint is required: each browser recalculates from
+the same fixture graph and mock incident feed, with local fallback when offline.
 
 ### Simulation status
 

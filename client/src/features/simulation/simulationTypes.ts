@@ -71,12 +71,15 @@ export interface SimulationState {
   currentNodeId: string;
   routeNodeIds: string[];
   routeRoadIds: string[];
+  previousRouteNodeIds: string[];
+  previousRouteRoadIds: string[];
   distanceTravelledMeters: number;
   distanceRemainingMeters: number;
   etaSeconds: number;
   events: SimulationEvent[];
   vehicle: VehicleConfiguration;
   scenarios: Scenario[];
+  externalScenarios: Scenario[];
   routeStatus: RouteStatus;
   routeMessage: string;
   eventSequence: number;
@@ -98,10 +101,12 @@ export type SimulationAction =
   | { type: 'remove-scenario'; scenarioId: string }
   | { type: 'restart-scenario' }
   | { type: 'return-default-route' }
-  | { type: 'city-updated'; city: CityData };
+  | { type: 'city-updated'; city: CityData }
+  | { type: 'external-incidents-updated'; scenarios: Scenario[] };
 
 export interface ScenarioRoadEffects {
   city: CityData;
   roadCostMultipliers: Readonly<Record<string, number>>;
   affectedRoadIds: Set<string>;
+  blockedRoadIds: Set<string>;
 }

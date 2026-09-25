@@ -111,6 +111,7 @@ test('invalid and unknown references return JSON errors without partial mutation
       ['/api/incidents', 'POST', { ...incident, blocked: 'true' }, 400],
       ['/api/incidents', 'POST', { ...incident, severity: 'critical' }, 400],
       ['/api/incidents', 'POST', { ...incident, type: 'invalid' }, 400],
+      ['/api/incidents', 'POST', { ...incident, origin: 'government-live' }, 400],
       ['/api/incidents', 'POST', { ...incident, roadId: 'missing' }, 404],
       ['/api/incidents/missing', 'DELETE', undefined, 404],
       ['/api/simulation/tick', 'POST', {}, 404],
@@ -157,10 +158,19 @@ test('traffic operations endpoints expose fleet, mock signals, alerts, events, a
 
     const created = await request('/api/incidents', { method: 'POST', body: incident });
     assert.equal(created.status, 201);
+    assert.equal(created.body.incident.origin, 'operator');
     assert.equal((await request('/api/incidents')).body.incidents.length, 1);
+    const simulationIncident = await request('/api/incidents', { method: 'POST', body: { ...incident, roadId: 'R3', origin: 'simulation' } });
+    assert.equal(simulationIncident.body.incident.origin, 'simulation');
+    await request(`/api/incidents/${simulationIncident.body.incident.id}`, { method: 'DELETE' });
+    const forcedClosure = await request('/api/incidents', { method: 'POST', body: { ...incident, roadId: 'R12', type: 'flood', blocked: false } });
+    assert.equal(forcedClosure.body.incident.blocked, true);
+    await request(`/api/incidents/${forcedClosure.body.incident.id}`, { method: 'DELETE' });
     assert.equal((await request('/api/alerts')).body.alerts.some((alert) => alert.type === 'incident' && alert.severity === 'critical'), true);
     assert.ok((await request('/api/operations/events')).body.events.length >= 3);
     assert.equal((await request('/api/operations/summary')).body.summary.incidentsToday, 1);
+    await request(`/api/incidents/${created.body.incident.id}`, { method: 'DELETE' });
+    assert.equal((await request('/api/alerts')).body.alerts.filter((alert) => alert.type === 'incident').every((alert) => alert.acknowledged), true);
 
     await request('/api/simulation/reset', { method: 'POST' });
     assert.deepEqual((await request('/api/alerts')).body.alerts, []);

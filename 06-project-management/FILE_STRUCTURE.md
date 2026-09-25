@@ -31,6 +31,10 @@ vialert/
           simulationTypes.ts
           simulationData.ts
           simulationSnapshot.ts
+        routing/
+          dynamicRouting.ts
+          incidentFeed.ts
+          useRouteConditions.ts
       components/
         map/
         layout/
@@ -71,9 +75,10 @@ Phase 3 retains browser routes `/ambulance`, `/traffic`, and `/simulation`. The
 ambulance feature owns driver navigation; the simulation feature owns its pure
 deterministic reducer, timer hook, scenario overlays, timeline, controls, and
 map presentation. The traffic feature owns the operator page, fleet mapping,
-polling, panels, and same-browser simulation snapshot. Node owns mock signal,
-incident, alert, and event records but does not advance the client's simulation
-clock.
+polling, panels, and same-browser simulation snapshot. The routing feature owns
+Phase 5 cost factors, incident projection, and the driver condition feed. Node
+owns mock signal, incident, alert, and event records but does not advance the
+client's simulation clock or calculate a production route.
 
 ## Documentation Mapping
 
@@ -84,4 +89,4 @@ clock.
 | `02-traffic-incharge-dashboard` | `client/src/features/traffic` and `client/src/pages/TrafficControlPage.tsx` |
 | `03-ai-traffic-prediction` | `server-ai/app` |
 | `04-backend-realtime` | `server-node/src` |
-| `05-map-data-routing` | `shared-data` and routing services |
+| `05-map-data-routing` | `shared-data` and `client/src/features/routing` |

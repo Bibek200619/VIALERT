@@ -8,6 +8,7 @@ import rawSignals from '../../../../shared-data/signals.json';
 import rawVehicles from '../../../../shared-data/vehicles.json';
 import type { CityData, JourneyState, Road, RoutePlan, RoutePosition, Signal, TurnGuidance, UpcomingSignal } from './types';
 import type { ScenarioPreset } from '../../services/apiClient';
+import { calculateRoadCost } from '../routing/dynamicRouting';
 
 export const demoCityData: CityData = {
   nodes: rawNodes,
@@ -29,8 +30,6 @@ export const demoCityData: CityData = {
   })),
   demo: true,
 };
-
-const congestionWeight = { low: 1, medium: 1.5, high: 2.5 } as const;
 
 function distanceBetweenNodes(city: CityData, fromId: string, toId: string): number {
   const from = city.nodes.find((node) => node.id === fromId);
@@ -65,6 +64,7 @@ export function findRoute(
   if (startId === targetId) return { nodeIds: [startId], roadIds: [], totalDistanceMeters: 0, etaSeconds: 0 };
 
   const roadById = new Map(city.roads.map((road) => [road.id, road]));
+  const prioritySignalNodes = new Set(city.signals.filter((signal) => signal.mode === 'emergency').map((signal) => signal.nodeId));
   const open = new Set([startId]);
   const cameFrom = new Map<string, { nodeId: string; roadId: string }>();
   const costTo = new Map([[startId, 0]]);
@@ -111,7 +111,7 @@ export function findRoute(
 
       const multiplier = options.roadCostMultipliers?.[road.id] ?? 1;
       const nextCost = (costTo.get(currentId) ?? Number.POSITIVE_INFINITY)
-        + road.baseTimeSeconds * congestionWeight[road.congestion] * multiplier;
+        + calculateRoadCost(road, multiplier, prioritySignalNodes.has(edge.to));
       if (nextCost >= (costTo.get(edge.to) ?? Number.POSITIVE_INFINITY)) continue;
 
       cameFrom.set(edge.to, { nodeId: currentId, roadId: road.id });

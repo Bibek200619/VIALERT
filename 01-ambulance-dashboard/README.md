@@ -41,10 +41,23 @@ is connected.
 - Start, pause, resume, and reset controls with mock API integration.
 - Optional browser-based voice guidance with a text-only fallback.
 
+## Phase 5 route updates
+
+The driver route now responds to mock Node incidents, operator-created offline
+incidents in the same browser, simulated weather, congestion, closures, and
+priority-signal mode. The route card names the cause and ETA impact; a muted
+dashed path shows the former route. If all hospital approaches are blocked, the
+map remains available and the route card names the blocked links and recovery
+action. When `/simulation` is active in another tab of this browser, this page
+follows its ambulance position and route; movement controls move to Simulation
+to avoid two competing journey clocks. Without that feed, the Phase 2 local
+journey remains available and its progress is proportionally reprojected after
+a route-cost change. This is an illustrative demo, not exact vehicle tracking.
+
 ## Later work
 
-Dynamic rerouting, incident/scenario playback, signal control, multi-ambulance
-monitoring, live GPS, and real emergency dispatch remain outside Phase 2.
+Phase 5 adds dynamic rerouting. Production traffic feeds, trained prediction,
+multi-ambulance tracking, live GPS, and real emergency dispatch remain future work.
 
 ## Driver sees
 

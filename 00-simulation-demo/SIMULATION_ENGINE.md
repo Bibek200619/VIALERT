@@ -25,14 +25,19 @@ replay; wall-clock dates are not used by the client simulation engine.
 ## Route and scenario effects
 
 The engine reuses the Phase 2 A* planner. Scenario overlays are applied to a
-copy of the in-memory city graph and never alter the checked-in JSON. A* uses
-the existing road time and congestion weights, multiplied by scenario costs.
+copy of the in-memory city graph and never alter the checked-in JSON. Phase 5
+centralizes congestion, incident, weather, closure, and mock priority-signal
+costs in `features/routing/dynamicRouting.ts`.
 Accident, construction, and congestion increase costs on the selected road;
 rain increases cost and congestion on adjacent demo links. Flood and blockage
 mark the selected road unavailable. When an activation, removal, expiry, or
 vehicle configuration changes route inputs, the engine recalculates from the
 ambulance's current node and updates ETA, distance, route status, and a written
-reason. If no path remains, playback pauses in an explicit unavailable state;
+reason with the named cause and ETA difference. The previous route remains a
+muted dashed line after a path change. Operator mock incidents are polled from
+Node (or same-browser local storage when offline) and enter the same reducer as
+external scenarios; simulation-owned incidents are not applied twice. If no
+path remains, playback pauses in an explicit unavailable state;
 removing a blocking condition allows recovery.
 
 Each scenario can be placed on a graph road or junction, assigned a severity,

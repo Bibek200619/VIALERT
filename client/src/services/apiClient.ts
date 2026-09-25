@@ -113,6 +113,7 @@ export interface IncidentRequest {
   type: 'accident' | 'construction' | 'heavy-rain' | 'rain' | 'flood' | 'congestion' | 'blockage';
   severity: 'low' | 'medium' | 'high';
   blocked: boolean;
+  origin?: 'operator' | 'simulation';
 }
 
 export interface IncidentRecord extends IncidentRequest {

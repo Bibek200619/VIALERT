@@ -1,4 +1,6 @@
 import { findRoute } from '../ambulance/ambulanceData';
+import type { RoutePlan } from '../ambulance/types';
+import { explainRouteChange, type RoadHazard } from '../routing/dynamicRouting';
 import type { SimulationSnapshot } from '../simulation/simulationSnapshot';
 import { getScenarioAffectedRoadIds } from '../simulation/simulationEngine';
 import type { CityData, IncidentRecord, Signal, VehicleFixture } from '../../services/apiClient';
@@ -15,14 +17,36 @@ export function nextSignalForVehicle(city: CityData, vehicle: Pick<OperationsVeh
   return city.signals.find((signal) => route.slice(currentIndex + 1).includes(signal.nodeId)) ?? null;
 }
 
-export function vehicleFromFixture(city: CityData, fixture: VehicleFixture, now: number): OperationsVehicle {
-  const route = findRoute(city, fixture.currentNodeId, fixture.destinationNodeId);
+export interface RouteContext {
+  baselineCity?: CityData;
+  roadCostMultipliers?: Readonly<Record<string, number>>;
+  hazards?: RoadHazard[];
+  blockedRoadIds?: ReadonlySet<string>;
+}
+
+function routeState(city: CityData, origin: string, destination: string, route: RoutePlan | null, context: RouteContext) {
+  const baseline = findRoute(context.baselineCity ?? city, origin, destination);
+  const changed = baseline?.roadIds.join('|') !== route?.roadIds.join('|');
+  const affected = context.hazards?.some((hazard) => hazard.active && hazard.roadId && route?.roadIds.includes(hazard.roadId));
+  const destinationName = locationName(city, destination);
+  return {
+    routeStatus: route ? changed ? 'rerouted' as const : affected ? 'impacted' as const : 'clear' as const : 'unavailable' as const,
+    routeMessage: context.hazards?.some((hazard) => hazard.active) || !route
+      ? explainRouteChange({ city: context.baselineCity ?? city, destinationName, previous: baseline, next: route, hazard: context.hazards?.find((hazard) => hazard.active), blockedRoadIds: context.blockedRoadIds ?? new Set() })
+      : 'Default demo corridor ready.',
+  };
+}
+
+export function vehicleFromFixture(city: CityData, fixture: VehicleFixture, now: number, context: RouteContext = {}): OperationsVehicle {
+  const route = findRoute(city, fixture.currentNodeId, fixture.destinationNodeId, { roadCostMultipliers: context.roadCostMultipliers });
   const firstRoad = city.roads.find((road) => road.id === route?.roadIds[0]);
   const nextNodeId = route?.nodeIds[1];
   const draft: OperationsVehicle = {
     ...fixture,
     routeNodeIds: route?.nodeIds ?? [],
     routeRoadIds: route?.roadIds ?? [],
+    previousRouteNodeIds: [],
+    ...routeState(city, fixture.currentNodeId, fixture.destinationNodeId, route, context),
     routeDistanceMeters: route?.totalDistanceMeters ?? 0,
     distanceRemainingMeters: route?.totalDistanceMeters ?? 0,
     etaSeconds: route?.etaSeconds ?? 0,
@@ -36,13 +60,14 @@ export function vehicleFromFixture(city: CityData, fixture: VehicleFixture, now:
   return { ...draft, nextSignalId: nextSignalForVehicle(city, draft)?.id ?? null };
 }
 
-export function mapSimulationToVehicle(city: CityData, fixture: VehicleFixture, snapshot: SimulationSnapshot): OperationsVehicle {
+export function mapSimulationToVehicle(city: CityData, fixture: VehicleFixture, snapshot: SimulationSnapshot, context: RouteContext = {}): OperationsVehicle {
   const { state, publishedAt } = snapshot;
   const base = city.bases.find((candidate) => candidate.id === state.vehicle.baseId);
   const hospital = city.hospitals.find((candidate) => candidate.id === state.vehicle.destinationId);
-  const route = findRoute(city, base?.nodeId ?? '', hospital?.nodeId ?? '');
-  const currentRoad = city.roads.find((road) => road.id === state.routeRoadIds[0]);
-  const nextNodeId = state.routeNodeIds[1];
+  const activeRoute = findRoute(city, state.currentNodeId, hospital?.nodeId ?? '', { roadCostMultipliers: context.roadCostMultipliers });
+  const route = findRoute(context.baselineCity ?? city, base?.nodeId ?? '', hospital?.nodeId ?? '');
+  const currentRoad = city.roads.find((road) => road.id === activeRoute?.roadIds[0]);
+  const nextNodeId = activeRoute?.nodeIds[1];
   const currentNodeId = city.nodes.some((node) => node.id === state.currentNodeId) ? state.currentNodeId : fixture.currentNodeId;
   const draft: OperationsVehicle = {
     ...fixture,
@@ -54,11 +79,13 @@ export function mapSimulationToVehicle(city: CityData, fixture: VehicleFixture, 
     currentNodeId,
     destinationNodeId: hospital?.nodeId ?? fixture.destinationNodeId,
     speedKph: state.status === 'running' ? fixture.speedKph : 0,
-    routeNodeIds: state.routeNodeIds,
-    routeRoadIds: state.routeRoadIds,
-    routeDistanceMeters: Math.max(route?.totalDistanceMeters ?? 0, state.distanceTravelledMeters + state.distanceRemainingMeters),
-    distanceRemainingMeters: state.distanceRemainingMeters,
-    etaSeconds: state.etaSeconds,
+    routeNodeIds: activeRoute?.nodeIds ?? [],
+    routeRoadIds: activeRoute?.roadIds ?? [],
+    previousRouteNodeIds: state.previousRouteNodeIds,
+    ...routeState(city, currentNodeId, hospital?.nodeId ?? '', activeRoute, context),
+    routeDistanceMeters: Math.max(route?.totalDistanceMeters ?? 0, state.distanceTravelledMeters + (activeRoute?.totalDistanceMeters ?? 0)),
+    distanceRemainingMeters: activeRoute?.totalDistanceMeters ?? 0,
+    etaSeconds: activeRoute?.etaSeconds ?? 0,
     currentRoad: currentRoad?.name ?? locationName(city, currentNodeId),
     nextJunction: nextNodeId ? locationName(city, nextNodeId) : 'Destination',
     nextSignalId: null,
@@ -66,6 +93,14 @@ export function mapSimulationToVehicle(city: CityData, fixture: VehicleFixture, 
     lastUpdateAt: publishedAt,
     source: 'simulation',
   };
+  const hasActiveHazards = context.hazards?.some((hazard) => hazard.active) ?? false;
+  if (activeRoute && !hasActiveHazards) {
+    draft.routeStatus = 'clear';
+    draft.routeMessage = state.routeMessage.includes('restored') ? state.routeMessage : 'Default demo corridor ready.';
+  } else if (state.routeRoadIds.join('|') === draft.routeRoadIds.join('|') && state.routeStatus !== 'clear') {
+    draft.routeStatus = state.routeStatus;
+    draft.routeMessage = state.routeMessage;
+  }
   return { ...draft, nextSignalId: nextSignalForVehicle(city, draft)?.id ?? null };
 }
 
@@ -82,8 +117,8 @@ export function deriveSimulationAlerts(city: CityData, vehicle: OperationsVehicl
   if (!snapshot) return [];
   const { state, publishedAt } = snapshot;
   const alerts: OperationsAlert[] = [];
-  if (state.routeStatus === 'unavailable' || state.routeStatus === 'rerouted' || state.routeStatus === 'impacted') {
-    alerts.push({ id: `sim-route-${state.routeStatus}`, severity: state.routeStatus === 'unavailable' ? 'critical' : 'warning', type: 'route', title: state.routeStatus === 'unavailable' ? 'Ambulance route unavailable' : 'Ambulance route changed', message: state.routeMessage, vehicleId: vehicle.id, nodeId: vehicle.currentNodeId, createdAt: publishedAt, acknowledged: false });
+  if (vehicle.routeStatus === 'unavailable' || vehicle.routeStatus === 'rerouted' || vehicle.routeStatus === 'impacted') {
+    alerts.push({ id: `sim-route-${vehicle.routeStatus}-${vehicle.routeRoadIds.join('-')}-${Math.round(vehicle.etaSeconds / 60)}`, severity: vehicle.routeStatus === 'unavailable' ? 'critical' : 'warning', type: 'route', title: vehicle.routeStatus === 'unavailable' ? 'Ambulance route unavailable' : 'Ambulance route changed', message: vehicle.routeMessage, vehicleId: vehicle.id, nodeId: vehicle.currentNodeId, createdAt: publishedAt, acknowledged: false });
   }
   for (const scenario of state.scenarios.filter((item) => item.active)) {
     const road = city.roads.find((item) => item.id === scenario.roadId);

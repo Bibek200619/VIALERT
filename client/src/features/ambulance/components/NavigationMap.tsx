@@ -9,6 +9,7 @@ interface NavigationMapProps {
   route: RoutePlan;
   ambulance: RoutePosition | null;
   destinationName: string;
+  previousRouteNodeIds?: string[];
 }
 
 function markerIcon(kind: 'ambulance' | 'base' | 'hospital' | 'signal' | 'warning', label: string) {
@@ -20,19 +21,20 @@ function markerIcon(kind: 'ambulance' | 'base' | 'hospital' | 'signal' | 'warnin
   });
 }
 
-export function NavigationMap({ city, route, ambulance, destinationName }: NavigationMapProps) {
+export function NavigationMap({ city, route, ambulance, destinationName, previousRouteNodeIds = [] }: NavigationMapProps) {
   const [graphOnly, setGraphOnly] = useState(false);
   const [tilesLoaded, setTilesLoaded] = useState(false);
   const [tilesFailed, setTilesFailed] = useState(false);
   const nodeById = useMemo(() => new Map(city.nodes.map((node) => [node.id, node])), [city.nodes]);
   const routeNodes = route.nodeIds.map((id) => nodeById.get(id)).filter((node) => node !== undefined);
   const base = city.bases[0] ? nodeById.get(city.bases[0].nodeId) : undefined;
-  const destination = city.hospitals.find((hospital) => hospital.name === destinationName);
+  const destination = city.hospitals.find((hospital) => hospital.name.replace(' (demo)', '') === destinationName);
   const destinationNode = destination ? nodeById.get(destination.nodeId) : undefined;
   const centerNode = ambulance ?? routeNodes[Math.floor(routeNodes.length / 2)] ?? base;
   const center: [number, number] = centerNode ? [centerNode.lat, centerNode.lng] : [12.95, 77.62];
   const tileUrl = import.meta.env.VITE_OSM_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const routePositions = routeNodes.map((node) => [node.lat, node.lng] as [number, number]);
+  const previousRoutePositions = previousRouteNodeIds.flatMap((id) => { const node = nodeById.get(id); return node ? [[node.lat, node.lng] as [number, number]] : []; });
   const cautionRoads = city.roads.filter((road) => road.blocked || road.congestion === 'high').flatMap((road) => {
     const from = nodeById.get(road.from);
     const to = nodeById.get(road.to);
@@ -62,7 +64,7 @@ export function NavigationMap({ city, route, ambulance, destinationName }: Navig
       </div>
     </div>
     <div className="map-frame">
-      {showGraph ? <GraphMap city={city} route={route} ambulance={ambulance} destinationName={destinationName} /> : <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="leaflet-map">
+      {showGraph ? <GraphMap city={city} route={route} ambulance={ambulance} destinationName={destinationName} previousRouteNodeIds={previousRouteNodeIds} /> : <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="leaflet-map">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
           url={tileUrl}
@@ -74,6 +76,7 @@ export function NavigationMap({ city, route, ambulance, destinationName }: Navig
           if (!from || !to) return null;
           return <Polyline key={road.id} positions={[[from.lat, from.lng], [to.lat, to.lng]]} pathOptions={{ color: road.blocked ? '#cd5d53' : '#52635a', weight: road.blocked ? 3 : 2, opacity: 0.72, dashArray: road.blocked ? '5 7' : undefined }} />;
         })}
+        {previousRoutePositions.length > 1 && <Polyline positions={previousRoutePositions} pathOptions={{ color: '#9caca0', weight: 4, opacity: .72, dashArray: '9 10' }} />}
         {routePositions.length > 1 && <>
           <Polyline positions={routePositions} pathOptions={{ color: '#9cf37a', weight: 13, opacity: 0.16, lineCap: 'round', lineJoin: 'round' }} />
           <Polyline positions={routePositions} pathOptions={{ color: '#a9f777', weight: 5, opacity: 0.96, lineCap: 'round', lineJoin: 'round' }} />

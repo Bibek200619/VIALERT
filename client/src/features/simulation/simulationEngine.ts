@@ -1,19 +1,16 @@
 import { findRoute } from '../ambulance/ambulanceData';
-import type { CityData, RoutePlan, Road } from '../ambulance/types';
+import type { CityData, RoutePlan } from '../ambulance/types';
+import { buildDynamicGraph, explainRouteChange, getHazardAffectedRoadIds } from '../routing/dynamicRouting';
 import { defaultVehicleConfiguration, getScenarioTemplates } from './simulationData';
 import type {
   Scenario,
   ScenarioRoadEffects,
-  ScenarioSeverity,
   SimulationAction,
   SimulationEvent,
   SimulationEventType,
   SimulationState,
   VehicleConfiguration,
 } from './simulationTypes';
-
-const congestionRank = { low: 0, medium: 1, high: 2 } as const;
-const congestionLevel = ['low', 'medium', 'high'] as const;
 
 function defaultVehicle(city: CityData): VehicleConfiguration {
   const base = city.bases.find((candidate) => candidate.id === defaultVehicleConfiguration.baseId) ?? city.bases[0];
@@ -27,72 +24,11 @@ function defaultVehicle(city: CityData): VehicleConfiguration {
 }
 
 export function getScenarioAffectedRoadIds(city: CityData, scenario: Pick<Scenario, 'type' | 'roadId' | 'nodeId'>): Set<string> {
-  const affected = new Set<string>();
-  if (scenario.roadId && city.roads.some((road) => road.id === scenario.roadId)) affected.add(scenario.roadId);
-  if (scenario.nodeId) {
-    for (const road of city.roads) {
-      if (road.from === scenario.nodeId || road.to === scenario.nodeId) affected.add(road.id);
-    }
-  }
-
-  // Rain represents a local weather cell in the small graph: it reaches roads
-  // connected to the selected segment, rather than changing the entire city.
-  if (scenario.type === 'rain' && affected.size > 0) {
-    const endpoints = new Set<string>();
-    for (const road of city.roads) {
-      if (affected.has(road.id)) {
-        endpoints.add(road.from);
-        endpoints.add(road.to);
-      }
-    }
-    for (const road of city.roads) {
-      if (endpoints.has(road.from) || endpoints.has(road.to)) affected.add(road.id);
-    }
-  }
-  return affected;
-}
-
-function severityMultiplier(severity: ScenarioSeverity): number {
-  return severity === 'high' ? 1.8 : severity === 'medium' ? 1.45 : 1.2;
+  return getHazardAffectedRoadIds(city, scenario);
 }
 
 export function applyScenarioEffects(city: CityData, scenarios: readonly Scenario[]): ScenarioRoadEffects {
-  const active = scenarios.filter((scenario) => scenario.active).slice().sort((a, b) => a.id.localeCompare(b.id));
-  const affectedRoadIds = new Set<string>();
-  const multipliers: Record<string, number> = {};
-  const roadEffects = new Map<string, { blocked: boolean; congestion: Road['congestion']; multiplier: number }>();
-
-  for (const scenario of active) {
-    const roadIds = getScenarioAffectedRoadIds(city, scenario);
-    const isClosingRoad = scenario.type === 'flood' || scenario.type === 'blockage';
-    for (const roadId of roadIds) {
-      affectedRoadIds.add(roadId);
-      const road = city.roads.find((candidate) => candidate.id === roadId);
-      if (!road) continue;
-      const previous = roadEffects.get(roadId) ?? { blocked: road.blocked, congestion: road.congestion, multiplier: 1 };
-      const nextRank = scenario.type === 'rain'
-        ? Math.min(2, congestionRank[previous.congestion] + 1)
-        : scenario.type === 'accident' || scenario.type === 'construction' || scenario.type === 'congestion'
-          ? Math.max(congestionRank[previous.congestion], scenario.severity === 'low' ? 1 : 2)
-          : congestionRank[previous.congestion];
-      roadEffects.set(roadId, {
-        blocked: previous.blocked || isClosingRoad || Boolean(scenario.blocked),
-        congestion: congestionLevel[nextRank],
-        multiplier: previous.multiplier * (scenario.type === 'rain' ? 1.3 : severityMultiplier(scenario.severity)),
-      });
-    }
-  }
-
-  for (const [roadId, effect] of roadEffects) multipliers[roadId] = effect.multiplier;
-  const roads = city.roads.map((road) => {
-    const effect = roadEffects.get(road.id);
-    return effect ? { ...road, blocked: effect.blocked, congestion: effect.congestion } : road;
-  });
-  return {
-    city: { ...city, roads },
-    roadCostMultipliers: multipliers,
-    affectedRoadIds,
-  };
+  return buildDynamicGraph(city, scenarios);
 }
 
 function computeRoute(city: CityData, vehicle: VehicleConfiguration, scenarios: readonly Scenario[]): RoutePlan | null {
@@ -130,6 +66,8 @@ function setRoute(state: SimulationState, route: RoutePlan | null, startNodeId: 
     currentNodeId: startNodeId,
     routeNodeIds: route?.nodeIds ?? [],
     routeRoadIds: route?.roadIds ?? [],
+    previousRouteNodeIds: [],
+    previousRouteRoadIds: [],
     distanceRemainingMeters: route?.totalDistanceMeters ?? 0,
     etaSeconds: route?.etaSeconds ?? 0,
     routeStatus: route ? 'clear' : 'unavailable',
@@ -152,12 +90,15 @@ export function createInitialSimulationState(city: CityData): SimulationState {
     currentNodeId: base?.nodeId ?? '',
     routeNodeIds: [],
     routeRoadIds: [],
+    previousRouteNodeIds: [],
+    previousRouteRoadIds: [],
     distanceTravelledMeters: 0,
     distanceRemainingMeters: 0,
     etaSeconds: 0,
     events: [],
     vehicle,
     scenarios,
+    externalScenarios: [],
     routeStatus: 'unavailable',
     routeMessage: '',
     eventSequence: 0,
@@ -167,7 +108,7 @@ export function createInitialSimulationState(city: CityData): SimulationState {
 }
 
 function updateRouteForCurrentNode(state: SimulationState, city: CityData, fromNodeId: string): SimulationState {
-  const effects = applyScenarioEffects(city, state.scenarios);
+  const effects = applyScenarioEffects(city, [...state.scenarios, ...state.externalScenarios]);
   const destination = city.hospitals.find((hospital) => hospital.id === state.vehicle.destinationId);
   const route = destination
     ? findRoute(effects.city, fromNodeId, destination.nodeId, { roadCostMultipliers: effects.roadCostMultipliers })
@@ -190,43 +131,34 @@ function scenarioRouteUpdate(
   changedScenario: Scenario,
 ): SimulationState {
   const previousRoadIds = previous.routeRoadIds.join('|');
-  const effects = applyScenarioEffects(city, candidate.scenarios);
+  const effects = applyScenarioEffects(city, [...candidate.scenarios, ...candidate.externalScenarios]);
   const destination = city.hospitals.find((hospital) => hospital.id === candidate.vehicle.destinationId);
   const route = destination
     ? findRoute(effects.city, candidate.currentNodeId, destination.nodeId, { roadCostMultipliers: effects.roadCostMultipliers })
     : null;
   const nextRoadIds = route?.roadIds ?? [];
   const pathChanged = previousRoadIds !== nextRoadIds.join('|');
-  const affectedCurrentRoute = candidate.activeScenarioIds.some((scenarioId) => {
-    const scenario = candidate.scenarios.find((item) => item.id === scenarioId);
-    if (!scenario) return false;
+  const affectedCurrentRoute = [...candidate.scenarios, ...candidate.externalScenarios].filter((scenario) => scenario.active).some((scenario) => {
     const roads = getScenarioAffectedRoadIds(city, scenario);
     return nextRoadIds.some((roadId) => roads.has(roadId)) || previous.routeRoadIds.some((roadId) => roads.has(roadId));
   });
   let routeStatus: SimulationState['routeStatus'] = route ? 'clear' : 'unavailable';
-  let routeMessage: string;
-  const changeVerb = candidate.scenarios.some((scenario) => scenario.id === changedScenario.id)
-    ? changedScenario.active ? 'activated' : 'deactivated'
-    : 'removed';
-  if (!route) {
-    routeMessage = `No route is available to ${destination?.name.replace(' (demo)', '') ?? 'the destination'}. Remove a blocking scenario or reset the route.`;
-  } else if (pathChanged) {
-    routeStatus = 'rerouted';
-    routeMessage = `Route recalculated after ${changedScenario.name} was ${changeVerb}.`;
-  } else if (affectedCurrentRoute) {
-    routeStatus = 'impacted';
-    routeMessage = changedScenario.active
-      ? `${changedScenario.name} changes travel cost on this route. ETA has been recalculated.`
-      : `${changedScenario.name} was ${changeVerb}. Route cost and ETA were recalculated.`;
-  } else {
-    routeMessage = changedScenario.active
-      ? `${changedScenario.name} is active away from the current route; route remains unchanged.`
-      : `${changedScenario.name} was ${changeVerb}; the current route remains available.`;
-  }
+  if (route && pathChanged) routeStatus = changedScenario.active ? 'rerouted' : 'clear';
+  else if (route && affectedCurrentRoute) routeStatus = 'impacted';
+  const routeMessage = explainRouteChange({
+    city,
+    destinationName: destination?.name.replace(' (demo)', '') ?? 'the destination',
+    previous: previous.routeNodeIds.length ? { nodeIds: previous.routeNodeIds, roadIds: previous.routeRoadIds, totalDistanceMeters: previous.distanceRemainingMeters, etaSeconds: previous.etaSeconds } : null,
+    next: route,
+    hazard: changedScenario,
+    blockedRoadIds: effects.blockedRoadIds,
+  });
   let updated: SimulationState = {
     ...candidate,
     routeNodeIds: route?.nodeIds ?? [],
     routeRoadIds: nextRoadIds,
+    previousRouteNodeIds: pathChanged ? previous.routeNodeIds : candidate.previousRouteNodeIds,
+    previousRouteRoadIds: pathChanged ? previous.routeRoadIds : candidate.previousRouteRoadIds,
     distanceRemainingMeters: route?.totalDistanceMeters ?? 0,
     etaSeconds: route?.etaSeconds ?? 0,
     routeStatus,
@@ -281,7 +213,7 @@ function changeVehicle(state: SimulationState, vehiclePatch: Partial<VehicleConf
     || !city.hospitals.some((hospital) => hospital.id === vehicle.destinationId)
     || !vehicle.ambulanceId.trim() || !vehicle.vehicleNumber.trim()) return state;
   const base = city.bases.find((candidate) => candidate.id === vehicle.baseId);
-  const route = computeRoute(city, vehicle, state.scenarios);
+  const route = computeRoute(city, vehicle, [...state.scenarios, ...state.externalScenarios]);
   let updated: SimulationState = {
     ...state,
     status: 'ready',
@@ -328,7 +260,8 @@ function resetWithCurrentScenario(state: SimulationState, city: CityData, eventT
     initial = { ...initial, vehicle: { ...state.vehicle }, selectedVehicleId: state.vehicle.ambulanceId, speedMultiplier: state.speedMultiplier };
     const base = city.bases.find((candidate) => candidate.id === state.vehicle.baseId);
     const scenarios = state.scenarios.map((scenario) => scenario.active ? { ...scenario, startTime: 0 } : scenario);
-    const route = computeRoute(city, initial.vehicle, scenarios);
+    initial = { ...initial, externalScenarios: state.externalScenarios };
+    const route = computeRoute(city, initial.vehicle, [...scenarios, ...initial.externalScenarios]);
     initial = {
       ...initial,
       scenarios,
@@ -402,7 +335,7 @@ function advanceTick(state: SimulationState, city: CityData, stepped: boolean): 
       continue;
     }
 
-    const effects = applyScenarioEffects(city, current.scenarios);
+    const effects = applyScenarioEffects(city, [...current.scenarios, ...current.externalScenarios]);
     const currentRoad = effects.city.roads.find((candidate) => candidate.id === current.routeRoadIds[0]);
     if (!currentRoad || currentRoad.blocked) {
       current = updateRouteForCurrentNode({ ...current, simulationTimeSeconds: nextTime }, city, current.currentNodeId);
@@ -498,20 +431,31 @@ export function simulationReducer(state: SimulationState, action: SimulationActi
     case 'return-default-route':
       return resetWithCurrentScenario(state, city, 'default_route_restored');
     case 'city-updated': {
-      const effects = applyScenarioEffects(action.city, state.scenarios);
+      const effects = applyScenarioEffects(action.city, [...state.scenarios, ...state.externalScenarios]);
       const destination = action.city.hospitals.find((hospital) => hospital.id === state.vehicle.destinationId);
       const route = destination
         ? findRoute(effects.city, state.currentNodeId, destination.nodeId, { roadCostMultipliers: effects.roadCostMultipliers })
         : null;
+      const hasActiveConditions = [...state.scenarios, ...state.externalScenarios].some((scenario) => scenario.active);
       return {
         ...state,
         routeNodeIds: route?.nodeIds ?? [],
         routeRoadIds: route?.roadIds ?? [],
         distanceRemainingMeters: route?.totalDistanceMeters ?? 0,
         etaSeconds: route?.etaSeconds ?? 0,
-        routeStatus: route ? 'clear' : 'unavailable',
-        routeMessage: route ? 'City graph refreshed; current route is available.' : 'No route is available in the refreshed city graph.',
+        routeStatus: route ? hasActiveConditions && state.routeStatus !== 'unavailable' ? state.routeStatus : 'clear' : 'unavailable',
+        routeMessage: route ? state.routeMessage || 'City graph refreshed; current route is available.' : explainRouteChange({ city: action.city, destinationName: destination?.name ?? 'the destination', previous: null, next: null, blockedRoadIds: effects.blockedRoadIds }),
       };
+    }
+    case 'external-incidents-updated': {
+      const before = state.externalScenarios.map((scenario) => `${scenario.id}:${scenario.roadId}:${scenario.severity}:${scenario.blocked}`).sort().join('|');
+      const after = action.scenarios.map((scenario) => `${scenario.id}:${scenario.roadId}:${scenario.severity}:${scenario.blocked}`).sort().join('|');
+      if (before === after) return state;
+      const changed = action.scenarios.find((scenario) => !state.externalScenarios.some((old) => old.id === scenario.id))
+        ?? (() => { const removed = state.externalScenarios.find((scenario) => !action.scenarios.some((next) => next.id === scenario.id)); return removed ? { ...removed, active: false } : undefined; })();
+      const candidate = { ...state, externalScenarios: action.scenarios };
+      const updated = scenarioRouteUpdate(state, candidate, city, changed ?? { id: 'external-change', type: 'congestion', name: 'Operator incident update', description: 'Mock operator incident feed changed.', severity: 'medium', active: false });
+      return updated.routeStatus === 'unavailable' && updated.status === 'running' ? { ...updated, status: 'paused' } : updated;
     }
   }
 }

@@ -20,7 +20,7 @@ export function SimulationPage() {
   const { city, state } = simulation;
   const [cameraMode, setCameraMode] = useState<CameraMode>('map');
   const templates = useMemo(() => getScenarioTemplates(city), [city]);
-  const effectiveCity = useMemo(() => applyScenarioEffects(city, state.scenarios).city, [city, state.scenarios]);
+  const effectiveCity = useMemo(() => applyScenarioEffects(city, [...state.scenarios, ...state.externalScenarios]).city, [city, state.scenarios, state.externalScenarios]);
   const currentNode = city.nodes.find((node) => node.id === state.currentNodeId);
   const nextRoad = effectiveCity.roads.find((road) => road.id === state.routeRoadIds[0]);
   const totalDistance = state.distanceTravelledMeters + state.distanceRemainingMeters;
@@ -70,7 +70,9 @@ export function SimulationPage() {
             <div><span>Estimated route time</span><strong>{formatDuration(state.etaSeconds)}</strong></div>
             <div><span>Emergency priority</span><strong className={`priority-${state.vehicle.priority}`}>{state.vehicle.priority}</strong></div>
           </div>
-          {state.routeStatus === 'unavailable' && <p className="route-error" role="alert">{state.routeMessage} Remove or deactivate a road-blocking scenario, or restore the default route.</p>}
+          <p className={`route-impact-message ${state.routeStatus}`} role="status" aria-live="polite">{state.routeMessage}</p>
+          {state.previousRouteNodeIds.length > 1 && <p className="route-compare-note">Dashed line: previous route · Green line: active route</p>}
+          {state.routeStatus === 'unavailable' && <p className="route-error" role="alert">The ambulance is paused until the blocked corridor is reopened or the demo route is reset.</p>}
         </section>
       </div>
 

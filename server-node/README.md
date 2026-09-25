@@ -1,4 +1,4 @@
-# Node demo API · Phase 4
+# Node demo API · Phase 5
 
 This is a local, in-memory mock API. It does not dispatch ambulances, control
 real signals, track GPS, or run the browser simulation clock. All responses
@@ -64,6 +64,12 @@ Create a mock road incident with all four fields:
 ```json
 {"roadId":"R4","type":"accident","severity":"high","blocked":true}
 ```
+
+Phase 5 optionally accepts `"origin":"operator"` (the default) or
+`"origin":"simulation"`. The frontend polls operator incidents into the
+same-browser A* demo and excludes simulation-origin records from its external
+feed to prevent double-counting. No server-side route service, trained AI,
+physical signal integration, or persistent incident store is present.
 
 Types: `accident`, `construction`, `rain`, legacy `heavy-rain`, `flood`,
 `congestion`, and `blockage`. Severity: `low`, `medium`, `high`. `blocked` must
