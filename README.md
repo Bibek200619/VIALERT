@@ -1,9 +1,9 @@
 # VIALERT · Emergency mobility demo
 
-VIALERT is a phased emergency mobility demo. Phase 5 adds incident-aware
-rerouting across the Phase 4 traffic operations dashboard, Phase 3 simulation,
-Phase 2 ambulance dashboard, and Phase 1 Node.js mock API,
-FastAPI rule-based prediction service, and Bengaluru-inspired shared JSON graph.
+VIALERT is a phased emergency mobility demo. Phase 6 adds explainable future
+traffic risk to the Phase 5 incident-aware router, Phase 4 traffic operations
+dashboard, Phase 3 simulation, Phase 2 ambulance dashboard, and Phase 1 mock
+services and Bengaluru-inspired shared JSON graph.
 All journeys, incidents, conditions, and signal states are **demo only**. There is
 no real emergency dispatch, traffic control, GPS tracking, or measured prediction
 accuracy.
@@ -35,7 +35,7 @@ npm run dev:ai
 | --- | --- | --- |
 | React + Vite | http://localhost:5173/traffic | Traffic operations, ambulance dashboard, and simulation control center |
 | Node API | http://127.0.0.1:4000/api/health | In-memory city, emergency, signal, incident, and reset APIs |
-| FastAPI | http://127.0.0.1:8000/health | Deterministic mock traffic predictions |
+| FastAPI | http://127.0.0.1:8000/health | Deterministic single and batch traffic forecasts |
 | API explorer | http://127.0.0.1:8000/docs | Interactive FastAPI schema and requests |
 
 Vite proxies `/api/*` to Node and `/ai/*` to FastAPI (removing `/ai`). Direct
@@ -172,14 +172,43 @@ prediction input, database, or WebSocket service in Phase 5. See the
 [routing notes](05-map-data-routing/ASTAR_ROUTING.md) and
 [API contract](04-backend-realtime/API_SPEC.md).
 
+## Phase 6 traffic prediction
+
+Open [Traffic Operations](http://localhost:5173/traffic) and use **Prediction
+desk**. Six roads from the shared graph are scored for a selectable demo time,
+day, weather, holiday, nearby event, current congestion, local incidents, and
+simulated priority signals. Select a corridor to inspect its 0–100 risk, next
+30-minute window, contributing factors, confidence **label**, and recommended
+operator/routing action. The map's **Future risk** layer uses dashed amber/red
+road overlays. **Recalculate** requests FastAPI again; if it is offline, an
+identical deterministic browser rule displays a labeled local fallback.
+
+High and severe forecasts add a transparent 1.15× or 1.30× road-cost factor
+to the Ambulance and Traffic A* views when **Apply forecast cost to demo
+routes** is enabled. The driver view names the affected road and demo ETA
+change. Simulation shows a scenario-linked forecast insight but preserves its
+Phase 3 incident-only replay timing. The forecast settings are shared between
+workspaces in the same browser. Node incidents or simulation scenarios update
+the forecast inputs; neither a live feed nor a trained model is involved.
+
+For a judge demo, keep the default weekday 18:00 setting and point to severe
+Silk Board risk. Set **Heavy rain** to raise several road risks and see R3 add
+roughly three minutes to the ambulance route; visit `/ambulance` to see that
+explanation. In `/simulation`, activate an accident on R3 and inspect the
+scenario-linked outlook and reroute timeline. Return to `/traffic`, select
+Koramangala, and show the accident factor and operator pre-action. Clear the
+scenario and weather assumption to return to baseline. These are deterministic
+mock values, not measured travel-time or forecast accuracy.
+
 ## What Phase 1 includes
 
 - Dark VIALERT navigation shell with three browsable workspace destinations.
 - Shared data: nine nodes, twelve road links, six signals, one base, two fictional
-  hospitals, six editable scenario presets, and two Phase 4 demo vehicles.
+  hospitals, six editable scenario presets, six Phase 6 forecast inputs, and two demo vehicles.
 - Validated mock APIs with disposable in-memory state and a reset endpoint.
-- Rule-based predictions with clear reasons and a fixed, uncalibrated demo
-  confidence value. No model is trained.
+- Legacy Phase 1 rule-based predictions and separate Phase 6 factor-based
+  forecasts. Confidence labels are heuristic, not calibrated accuracy. No
+  model is trained.
 
 The ambulance page reads health, city, and mock emergency data through
 `client/src/services/apiClient.ts`; starting a trip posts a mock emergency and
@@ -187,7 +216,8 @@ reset clears mock API state when Node is available. Its A* route planner reads t
 shared node, road, and adjacency fixtures and applies the documented congestion
 weights. Phase 3 adds a single-vehicle, timed client-side simulation using those
 same nodes, roads, routes, and mock incidents. Phase 4 adds an operator view and
-simulated signal controls. Phase 5 adds dynamic mock incident-aware routing.
+simulated signal controls. Phase 5 adds dynamic mock incident-aware routing;
+Phase 6 adds explainable, optional forecast costs and dashboard risk overlays.
 Multi-vehicle movement, WebSockets, live GPS, real
 dispatch, and live signal control remain future work. `socketClient.ts` remains a reserved placeholder.
 

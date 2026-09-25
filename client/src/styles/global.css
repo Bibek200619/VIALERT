@@ -331,10 +331,47 @@ main { max-width: 1540px; margin: 0 auto; padding: 40px 38px 22px; outline: none
 .traffic-event-item span { color: #d5e5d2; overflow-wrap: anywhere; }
 .traffic-event-item p { color: #b4c1b3; line-height: 1.45; }
 .traffic-event-item.critical { border-left: 2px solid #e27a6c; padding-left: 5px; }
+.forecast-panel { overflow: hidden; border-color: #425640; background: radial-gradient(circle at 13% 0%, #29432d, #1a241e 38%, #171e19 78%); }
+.forecast-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px 14px; }
+.forecast-heading h2 { margin-top: 4px; font-size: 20px; letter-spacing: -.4px; }
+.forecast-heading p { margin-top: 5px; color: #aebead; font-size: 11px; line-height: 1.5; }
+.forecast-heading-side { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 9px; }
+.forecast-heading-side .button { min-height: 33px; }
+.forecast-source { color: #c9dcbf; background: #25372a; border: 1px solid #496047; border-radius: 30px; padding: 6px 9px; font-size: 9px; white-space: nowrap; }
+.forecast-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 9px 12px; padding: 11px 20px; border-top: 1px solid #354737; border-bottom: 1px solid #354737; background: #1c2920a3; }
+.forecast-controls label { display: grid; gap: 5px; min-width: 110px; color: #b5c8b4; font-size: 9px; font-weight: 650; }
+.forecast-controls select, .forecast-controls input[type="time"] { min-height: 33px; color: #edf4e8; background: #223027; border: 1px solid #4b604b; border-radius: 5px; padding: 5px 8px; font: inherit; font-size: 11px; }
+.forecast-controls .forecast-check { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 33px; font-size: 10px; font-weight: 500; }
+.forecast-check input { accent-color: #b1ed83; width: 16px; height: 16px; }
+.forecast-controls .forecast-route-check { margin-left: auto; color: #d6eec6; }
+.forecast-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 9px; padding: 12px 20px 8px; font-size: 11px; color: #d6e7d1; }
+.forecast-summary strong { color: #f6c985; font-size: 15px; }
+.forecast-summary small { margin-left: auto; font-size: 9px; color: #a6b6a5; }
+.forecast-card-grid { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 8px; padding: 0 20px 12px; }
+.forecast-card { min-width: 0; min-height: 97px; display: grid; gap: 8px; text-align: left; border: 1px solid #3a4a3c; border-top: 3px solid #8ca794; border-radius: 7px; padding: 10px; color: #eaf3e6; background: #202b23; cursor: pointer; }
+.forecast-card:hover, .forecast-card.selected { border-color: #a8db84; background: #2a3a2b; }
+.forecast-card.high { border-top-color: #ecc378; }.forecast-card.severe { border-top-color: #ed8e7d; }
+.forecast-card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; justify-content: space-between; font-size: 11px; font-weight: 700; }
+.forecast-card strong { font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1; }
+.forecast-card strong small { margin-left: 2px; font-size: 9px; font-weight: 500; color: #afbeae; }
+.forecast-card-foot { font-size: 9px; color: #b3c2b0; line-height: 1.25; }
+.forecast-risk { display: inline-flex; align-items: center; border-radius: 4px; padding: 3px 5px; background: #304333; color: #c2e4b9; font-size: 8px; font-weight: 800; line-height: 1.1; text-transform: uppercase; letter-spacing: .4px; }
+.forecast-risk.medium { background: #344844; color: #bce0d9; }.forecast-risk.high { background: #5b4427; color: #ffdc9c; }.forecast-risk.severe { background: #66332c; color: #ffccbe; }
+.forecast-detail { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; border-top: 1px solid #354737; padding: 14px 20px 15px; }
+.forecast-detail h3 { margin-top: 4px; font-size: 15px; }.forecast-detail h3 span { margin-left: 6px; color: #a9bca3; font-size: 10px; font-weight: 500; }
+.forecast-detail-main > p { margin-top: 5px; color: #b7c8b5; font-size: 10px; }.forecast-detail-main > p strong { color: #f8c893; }
+.forecast-factors { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }.forecast-factors span { padding: 4px 6px; border: 1px solid #465848; border-radius: 4px; color: #d6e7d0; background: #263428; font-size: 9px; }
+.forecast-recommendations { display: grid; gap: 9px; }.forecast-recommendations p { color: #d6e7d1; font-size: 10px; line-height: 1.45; }.forecast-recommendations p span { display: block; margin-bottom: 2px; color: #b0d59a; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+.forecast-disclaimer { border-top: 1px solid #354737; padding: 9px 20px 11px; color: #a6b7a3; font-size: 9px; line-height: 1.4; }
+.forecast-empty { padding: 18px 20px; color: #eac590; font-size: 11px; }
+.prediction-insight { padding: 14px; }.prediction-insight .forecast-source { font-size: 8px; }.prediction-insight-line { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 11px; }.prediction-insight-line strong { font-size: 12px; }.prediction-insight-line > span:last-child { color: #bdcdb9; font-size: 10px; }
+.prediction-insight > p:not(.prediction-insight-line) { margin-top: 9px; color: #c8d5c2; font-size: 10px; line-height: 1.5; }.prediction-insight .prediction-route-note { color: #f4d59f !important; }.prediction-insight small { display: block; margin-top: 10px; color: #95a994; font-size: 8px; }
 @media (max-width: 1350px) { .traffic-main-grid { grid-template-columns: minmax(220px,.85fr) minmax(0,2fr); }.traffic-detail-panel { grid-column: 1 / -1; }.traffic-detail-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }.traffic-metrics-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }.traffic-metrics-grid > div:nth-child(5) { border-left: 0; } }
+@media (max-width: 1200px) { .forecast-card-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }.forecast-controls .forecast-route-check { margin-left: 0; } }
 @media (max-width: 1050px) { .traffic-lower-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.traffic-event-panel { grid-column: 1 / -1; }.traffic-city-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }.traffic-city-strip > div:nth-child(3) { border-left: 0; border-top: 1px solid #334135; }.traffic-city-strip > div:nth-child(4) { border-top: 1px solid #334135; } }
 @media (max-width: 850px) { .traffic-header { align-items: flex-start; flex-direction: column; }.traffic-header-right { justify-items: start; }.traffic-head-stats, .traffic-head-status, .traffic-header-links { justify-content: flex-start; }.traffic-main-grid { grid-template-columns: minmax(0,1fr); }.traffic-detail-panel { grid-column: auto; }.traffic-vehicle-list { max-height: 300px; }.traffic-map-frame { height: 490px; flex: auto; }.traffic-detail-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 600px) { .traffic-header { padding: 16px; }.traffic-head-stats { gap: 8px; }.traffic-head-stats span { padding-left: 7px; }.traffic-city-strip { grid-template-columns: 1fr; }.traffic-city-strip > div { border-left: 0; border-top: 1px solid #334135; }.traffic-city-strip > div:first-child { border: 0; }.traffic-lower-grid { grid-template-columns: minmax(0,1fr); }.traffic-event-panel { grid-column: auto; }.traffic-metrics-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.traffic-metrics-grid > div:nth-child(odd) { border-left: 0; }.traffic-map-frame { height: 370px; min-height: 370px; }.traffic-event-item { grid-template-columns: 65px 55px minmax(0,1fr); } }
+@media (max-width: 700px) { .forecast-heading, .forecast-detail { grid-template-columns: 1fr; flex-direction: column; align-items: flex-start; }.forecast-heading-side { justify-content: flex-start; }.forecast-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.forecast-summary small { flex-basis: 100%; margin-left: 0; } }
 
 /* Phase 2 dashboard shell */
 .page-main { max-width: 1740px; padding: 27px 30px 20px; }

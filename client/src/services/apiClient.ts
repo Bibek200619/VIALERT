@@ -122,6 +122,40 @@ export interface IncidentRecord extends IncidentRequest {
   demo: true;
 }
 
+export interface ForecastInput {
+  areaId: string;
+  roadId: string;
+  timeOfDay: string;
+  dayType: 'weekday' | 'weekend';
+  weather: 'clear' | 'rain' | 'heavy-rain';
+  rainIntensity: 'none' | 'light' | 'moderate' | 'heavy';
+  isHoliday: boolean;
+  officePeak: boolean;
+  schoolPeak: boolean;
+  activeIncidents: Array<'accident' | 'construction' | 'flood' | 'congestion' | 'blockage'>;
+  roadConstruction: boolean;
+  floodRisk: boolean;
+  currentCongestion: Road['congestion'];
+  eventNearby: boolean;
+  emergencyPriorityActive: boolean;
+}
+
+export interface TrafficForecast {
+  areaId: string;
+  roadId: string;
+  predictedCongestion: 'low' | 'medium' | 'high' | 'severe';
+  riskScore: number;
+  etaImpactMinutes: number;
+  confidence: 'low' | 'medium' | 'high';
+  predictionWindow: string;
+  factors: string[];
+  operatorRecommendation: string;
+  routingRecommendation: string;
+  disclaimer: string;
+  demo: true;
+  model: 'explainable-rules-v1';
+}
+
 export interface EmergencyRequest {
   ambulanceId: string;
   baseNodeId: string;
@@ -235,4 +269,8 @@ export const apiClient = {
       method: 'DELETE',
     }),
   getAiHealth: (signal?: AbortSignal) => request<HealthResponse>(`${aiBaseUrl}/health`, signal),
+  predictForecast: (payload: ForecastInput, signal?: AbortSignal) =>
+    request<TrafficForecast>(`${aiBaseUrl}/predict/forecast`, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+  predictBatch: (requests: ForecastInput[], signal?: AbortSignal) =>
+    request<{ demo: true; model: 'explainable-rules-v1'; predictions: TrafficForecast[] }>(`${aiBaseUrl}/predict/batch`, signal, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requests }) }),
 };

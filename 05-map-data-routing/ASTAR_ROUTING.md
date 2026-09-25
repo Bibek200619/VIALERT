@@ -20,11 +20,12 @@ A* finds the best route from ambulance base to destination while considering dis
 - Estimated travel time
 - Signals on the route
 
-## Phase 5 demo cost formula
+## Phase 5–6 demo cost formula
 
 ```text
 effectiveSeconds = baseTimeSeconds × congestionMultiplier
-                 × incidentPenalty × weatherMultiplier × prioritySignalBenefit
+                 × incidentPenalty × weatherMultiplier × forecastMultiplier
+                 × prioritySignalBenefit
 ```
 
 `client/src/features/routing/dynamicRouting.ts` owns these explainable factors.
@@ -32,8 +33,13 @@ Accident, construction, and heavy congestion raise the incident factor; rain
 raises the weather factor on the selected link and nearby connectors. A mock
 emergency-priority signal at the next node gives a modest 0.9 factor. A blocked
 road has infinite cost and is excluded by A*. Multiple active overlays combine
-deterministically. These multipliers are presentation rules, not calibrated
-travel times or AI predictions.
+deterministically. Phase 6 optionally adds a 1.15 forecast multiplier for high
+and 1.30 for severe predicted risk on a named graph road. Low/medium risk adds
+none. The operator can switch forecast costs off without hiding the predictions.
+Forecasts come from explainable FastAPI rules or an identical browser fallback;
+they are not trained AI or calibrated travel times. Simulation's deterministic
+replay retains its Phase 3 incident-only timing; Ambulance and Traffic show the
+forecast-adjusted A* ETA and a written explanation when a route road is affected.
 
 Suggested multipliers:
 
@@ -64,5 +70,5 @@ changes and logs the cause plus ETA difference. Ambulance and Traffic derive the
 same route from the shared fixture graph and current mock conditions. A previous
 route appears as a dashed line after a path change. If no path remains, the
 explanation names blocked roads and tells the operator to clear an incident or
-reset. Phase 6 may later supply a mock prediction factor; Phase 5 does not
-train or call a predictive model for routing.
+reset. Phase 6 adds a mock prediction factor without real traffic authority
+data or trained model inference.

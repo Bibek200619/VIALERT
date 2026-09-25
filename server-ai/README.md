@@ -1,6 +1,6 @@
-# VIALERT mock prediction service — Phase 1
+# VIALERT heuristic prediction service — Phase 6
 
-This FastAPI service returns deterministic, rule-based demo predictions. It has no
+This FastAPI service returns deterministic, explainable demo forecasts. It has no
 trained model, live traffic input, database, or measured prediction accuracy.
 
 ## Local development
@@ -30,6 +30,51 @@ independently of the shell's working directory.
 - `GET /predictions`: `{ "demo": true, "model": "rule-based-demo", "predictions": [...] }`,
   computed from `app/sample_data/prediction_inputs.json`. POST requests do not
   modify this list or store any state.
+- `POST /predict/forecast`: one factor-rich 30-minute graph-road forecast.
+- `POST /predict/batch`: `{ "requests": [ForecastInput, ...] }` for 1–24 roads;
+  returns `{ "demo": true, "model": "explainable-rules-v1", "predictions": [...] }`.
+
+The original Phase 1 routes, response shapes, and sample data remain unchanged.
+
+### Phase 6 forecast example
+
+```json
+{
+  "areaId": "SILK-BOARD", "roadId": "R5", "timeOfDay": "18:00",
+  "dayType": "weekday", "weather": "rain", "rainIntensity": "heavy",
+  "isHoliday": false, "officePeak": true, "schoolPeak": false,
+  "activeIncidents": ["accident"], "roadConstruction": false,
+  "floodRisk": false, "currentCongestion": "high",
+  "eventNearby": false, "emergencyPriorityActive": false
+}
+```
+
+`areaId` and `roadId` must exist in the shared node/road graph; `timeOfDay`
+must be `HH:MM` in 24-hour form. Enums and booleans are strict. Missing or
+invalid fields and unknown fields return HTTP 422. A successful response
+includes `predictedCongestion` (`low`, `medium`, `high`, `severe`), `riskScore`
+(0–100), `etaImpactMinutes`, `confidence` (`low`, `medium`, `high`),
+`predictionWindow`, all `factors`, operator and routing recommendations,
+`demo: true`, and a demo disclaimer. Confidence is a factor-count label, **not**
+a calibrated probability. The 0–100 risk is an ordinal demo score, not a
+measured probability of congestion.
+
+The score starts with current-congestion weight 8/24/45 plus area weight
+(Silk Board 15, Koramangala 8, Electronic City 7, MG Road and Whitefield 6,
+Indiranagar 4). Weekday office peak adds 16; school travel adds 7; holiday
+subtracts 8; light/moderate/heavy rain adds 6/11/18. Active accident,
+construction, flood, congestion, and blockage add 24/14/35/14/30;
+independent construction and flood-risk flags add 14/16 if not already listed
+as incidents; a nearby event adds 16. Scores are clamped to 0–100 and
+classified low (<25), medium (25–49), high (50–74), severe (75+). ETA area
+impact is a deliberately coarse score-derived estimate; emergency-priority
+signals reduce that estimate by one minute but do not hide the risk. The
+forecast window is 30 demo minutes from `timeOfDay` and wraps at midnight.
+
+The frontend batches six inputs in `shared-data/prediction_inputs.json`
+through Vite's `/ai` proxy. When FastAPI is unavailable, a TypeScript mirror
+uses the same rules and visibly says **Local rule fallback**. It is still
+heuristic. Neither implementation contacts a live traffic feed.
 
 Example request:
 

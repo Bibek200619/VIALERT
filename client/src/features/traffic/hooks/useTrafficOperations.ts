@@ -3,6 +3,9 @@ import { demoCityData } from '../../ambulance/ambulanceData';
 import { readSimulationSnapshot } from '../../simulation/simulationSnapshot';
 import { apiClient, type CityData, type IncidentRecord, type IncidentRequest, type OperationsAlertRecord, type OperationsEventRecord, type Signal, type VehicleFixture } from '../../../services/apiClient';
 import { buildDynamicGraph } from '../../routing/dynamicRouting';
+import { findRoute } from '../../ambulance/ambulanceData';
+import { combineCostMultipliers, explainForecastRouteEffect } from '../../prediction/predictionModel';
+import { usePredictions } from '../../prediction/usePredictions';
 import { incidentToHazard, readLocalIncidents, sameIncidents, writeLocalIncidents } from '../../routing/incidentFeed';
 import { demoVehicles } from '../trafficData';
 import { deriveReadyAlert, deriveSimulationAlerts, deriveSimulationEvents, deriveSimulationIncidents, filterVehicles, getOperationsMetrics, mapSimulationToVehicle, vehicleFromFixture } from '../trafficUtils';
@@ -94,17 +97,29 @@ export function useTrafficOperations() {
     ...(snapshot?.state.scenarios.filter((scenario) => scenario.active) ?? []),
     ...operatorIncidents.filter((incident) => incident.origin !== 'simulation').map((incident) => incidentToHazard(city, incident)),
   ], [city, operatorIncidents, snapshot]);
-  const effects = useMemo(() => buildDynamicGraph({ ...city, signals }, routingHazards), [city, signals, routingHazards]);
+  const cityWithSignals = useMemo(() => ({ ...city, signals }), [city, signals]);
+  const effects = useMemo(() => buildDynamicGraph(cityWithSignals, routingHazards), [cityWithSignals, routingHazards]);
   const displayCity = effects.city;
+  const prediction = usePredictions(displayCity, routingHazards);
   const simulationIncidents = deriveSimulationIncidents(displayCity, snapshot);
   const displayIncidents = [...operatorIncidents, ...simulationIncidents.filter((local) => !operatorIncidents.some((api) => api.roadId === local.roadId && api.type === local.type))];
   const vehicles = useMemo(() => {
     const now = lastUpdateAt;
-    const context = { baselineCity: { ...city, signals }, roadCostMultipliers: effects.roadCostMultipliers, hazards: routingHazards, blockedRoadIds: effects.blockedRoadIds };
+    const context = { baselineCity: cityWithSignals, roadCostMultipliers: combineCostMultipliers(effects.roadCostMultipliers, prediction.costMultipliers), hazards: routingHazards, blockedRoadIds: effects.blockedRoadIds };
     return fixtures.map((fixture) => fixture.type === 'ambulance' && snapshot && snapshot.state.vehicle.ambulanceId === fixture.id
       ? mapSimulationToVehicle(displayCity, fixture, snapshot, context)
-      : vehicleFromFixture(displayCity, fixture, now, context));
-  }, [city, displayCity, effects, fixtures, lastUpdateAt, routingHazards, signals, snapshot]);
+      : vehicleFromFixture(displayCity, fixture, now, context)).map((vehicle) => {
+        if (vehicle.type !== 'ambulance') return vehicle;
+        const withoutForecast = findRoute(displayCity, vehicle.currentNodeId, vehicle.destinationNodeId, { roadCostMultipliers: effects.roadCostMultipliers });
+        const withForecast = vehicle.routeNodeIds.length ? { nodeIds: vehicle.routeNodeIds, roadIds: vehicle.routeRoadIds, totalDistanceMeters: vehicle.distanceRemainingMeters, etaSeconds: vehicle.etaSeconds } : null;
+        const note = explainForecastRouteEffect(displayCity, withoutForecast, withForecast, prediction.predictions, prediction.settings.routingEnabled);
+        if (!note) return vehicle;
+        const changed = withoutForecast?.roadIds.join('|') !== withForecast?.roadIds.join('|');
+        return { ...vehicle, previousRouteNodeIds: changed && vehicle.previousRouteNodeIds.length === 0 ? withoutForecast?.nodeIds ?? [] : vehicle.previousRouteNodeIds,
+          routeStatus: vehicle.routeStatus === 'clear' ? changed ? 'rerouted' as const : 'impacted' as const : vehicle.routeStatus,
+          routeMessage: vehicle.routeMessage === 'Default demo corridor ready.' ? note : `${vehicle.routeMessage} ${note}` };
+      });
+  }, [cityWithSignals, displayCity, effects, fixtures, lastUpdateAt, prediction.costMultipliers, prediction.predictions, prediction.settings.routingEnabled, routingHazards, snapshot]);
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? vehicles[0] ?? null;
   const simulationVehicle = vehicles.find((vehicle) => vehicle.source === 'simulation');
   const derivedAlerts = useMemo(() => simulationVehicle ? deriveSimulationAlerts(displayCity, simulationVehicle, snapshot) : [], [displayCity, simulationVehicle, snapshot]);
@@ -210,7 +225,7 @@ export function useTrafficOperations() {
     city: displayCity, vehicles: countedVehicles, selectedVehicle, selectedVehicleId, selectVehicle,
     vehicleFilter, setVehicleFilter, visibleVehicles, alerts, visibleAlerts, alertSeverity, setAlertSeverity,
     alertType, setAlertType, acknowledge, signals, incidents: displayIncidents, events, metrics, connection, loading, notice,
-    changeSignal, addIncident, removeIncident, focusedNodeId, setFocusedNodeId, lastUpdateAt, snapshot,
+    changeSignal, addIncident, removeIncident, focusedNodeId, setFocusedNodeId, lastUpdateAt, snapshot, prediction,
     clearLog: () => setHiddenEvents(new Set([...backendEvents, ...localEvents, ...simulationEvents, ...routeEvents].map(eventKey))),
   };
 }

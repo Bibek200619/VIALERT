@@ -22,6 +22,9 @@ import type { CitySource, JourneyState } from '../features/ambulance/types';
 import type { CityData } from '../services/apiClient';
 import { explainRouteChange } from '../features/routing/dynamicRouting';
 import { useRouteConditions } from '../features/routing/useRouteConditions';
+import { PredictionInsight } from '../features/prediction/PredictionPanel';
+import { combineCostMultipliers, explainForecastRouteEffect } from '../features/prediction/predictionModel';
+import { usePredictions } from '../features/prediction/usePredictions';
 
 const NavigationMap = lazy(() => import('../features/ambulance/components/NavigationMap').then((module) => ({ default: module.NavigationMap })));
 
@@ -34,6 +37,8 @@ export function AmbulanceDashboardPage() {
   const [pendingDispatches, setPendingDispatches] = useState(0);
   const [actionNotice, setActionNotice] = useState('');
   const conditions = useRouteConditions(city);
+  const prediction = usePredictions(conditions.city, conditions.hazards);
+  const combinedCosts = useMemo(() => combineCostMultipliers(conditions.roadCostMultipliers, prediction.costMultipliers), [conditions.roadCostMultipliers, prediction.costMultipliers]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -70,11 +75,15 @@ export function AmbulanceDashboardPage() {
     : city.hospitals[0]?.id ?? '';
   const destination = city.hospitals.find((hospital) => hospital.id === destinationId);
   const baselineRoute = useMemo(() => base && destination ? findRoute(conditions.baselineCity, base.nodeId, destination.nodeId) : null, [base, conditions.baselineCity, destination]);
-  const localRoute = useMemo(() => base && destination ? findRoute(conditions.city, base.nodeId, destination.nodeId, { roadCostMultipliers: conditions.roadCostMultipliers }) : null, [base, conditions.city, conditions.roadCostMultipliers, destination]);
+  const incidentRoute = useMemo(() => base && destination ? findRoute(conditions.city, base.nodeId, destination.nodeId, { roadCostMultipliers: conditions.roadCostMultipliers }) : null, [base, conditions.city, conditions.roadCostMultipliers, destination]);
+  const localRoute = useMemo(() => base && destination ? findRoute(conditions.city, base.nodeId, destination.nodeId, { roadCostMultipliers: combinedCosts }) : null, [base, conditions.city, combinedCosts, destination]);
   const { journey: localJourney, start, pause, reset } = useJourney(localRoute);
   const route = useMemo(() => followingSimulation && simulationState && destination
-    ? findRoute(conditions.city, simulationState.currentNodeId, destination.nodeId, { roadCostMultipliers: conditions.roadCostMultipliers })
-    : localRoute, [conditions.city, conditions.roadCostMultipliers, destination, followingSimulation, localRoute, simulationState]);
+    ? findRoute(conditions.city, simulationState.currentNodeId, destination.nodeId, { roadCostMultipliers: combinedCosts })
+    : localRoute, [conditions.city, combinedCosts, destination, followingSimulation, localRoute, simulationState]);
+  const routeWithoutForecast = followingSimulation && simulationState && destination
+    ? findRoute(conditions.city, simulationState.currentNodeId, destination.nodeId, { roadCostMultipliers: conditions.roadCostMultipliers }) : incidentRoute;
+  const forecastNote = explainForecastRouteEffect(conditions.city, routeWithoutForecast, route, prediction.predictions, prediction.settings.routingEnabled);
   const journey: JourneyState = followingSimulation && simulationState
     ? { status: simulationState.status === 'running' ? 'active' : simulationState.status === 'completed' ? 'completed' : simulationState.status === 'paused' ? 'paused' : 'ready', distanceTravelledMeters: 0, elapsedSeconds: 0 }
     : localJourney;
@@ -93,16 +102,18 @@ export function AmbulanceDashboardPage() {
   const messageKey = turn ? `${turn.segmentIndex}:${turn.direction}:${turn.roadName}` : 'no-route';
   const upcomingSignals = route ? getUpcomingSignals(conditions.city, route, journey.distanceTravelledMeters) : [];
   const routeChanged = baselineRoute?.roadIds.join('|') !== localRoute?.roadIds.join('|');
+  const forecastPathChanged = routeWithoutForecast?.roadIds.join('|') !== route?.roadIds.join('|');
   const hasActiveHazards = conditions.hazards.some((hazard) => hazard.active);
-  const routeStatus = !route ? 'unavailable' : !hasActiveHazards && baselineRoute?.roadIds.join('|') === route.roadIds.join('|')
+  const routeStatus = !route ? 'unavailable' : (followingSimulation ? forecastPathChanged && Boolean(forecastNote) : routeChanged) ? 'rerouted' : forecastNote ? 'impacted' : !hasActiveHazards && baselineRoute?.roadIds.join('|') === localRoute?.roadIds.join('|')
     ? 'clear' : followingSimulation && simulationState && simulationState.routeRoadIds.join('|') === route.roadIds.join('|')
-      ? simulationState.routeStatus : routeChanged ? 'rerouted' : conditions.hazards.some((hazard) => hazard.active && hazard.roadId && route.roadIds.includes(hazard.roadId)) ? 'impacted' : 'clear';
-  const routeMessage = followingSimulation && simulationState && simulationState.routeRoadIds.join('|') === route?.roadIds.join('|')
+      ? simulationState.routeStatus : conditions.hazards.some((hazard) => hazard.active && hazard.roadId && route.roadIds.includes(hazard.roadId)) ? 'impacted' : 'clear';
+  const incidentMessage = followingSimulation && simulationState && simulationState.routeRoadIds.join('|') === route?.roadIds.join('|')
     ? simulationState.routeMessage
     : conditions.hazards.some((hazard) => hazard.active) || !route
-      ? explainRouteChange({ city: conditions.baselineCity, destinationName, previous: baselineRoute, next: route, hazard: conditions.hazards.find((hazard) => hazard.active), blockedRoadIds: conditions.blockedRoadIds })
+      ? explainRouteChange({ city: conditions.baselineCity, destinationName, previous: baselineRoute, next: routeWithoutForecast, hazard: conditions.hazards.find((hazard) => hazard.active), blockedRoadIds: conditions.blockedRoadIds })
       : 'Default demo corridor ready.';
-  const previousRouteNodeIds = followingSimulation ? simulationState?.previousRouteNodeIds ?? [] : routeChanged ? baselineRoute?.nodeIds ?? [] : [];
+  const routeMessage = forecastNote ? incidentMessage === 'Default demo corridor ready.' ? forecastNote : `${incidentMessage} ${forecastNote}` : incidentMessage;
+  const previousRouteNodeIds = followingSimulation ? simulationState?.previousRouteNodeIds ?? [] : forecastNote && forecastPathChanged ? routeWithoutForecast?.nodeIds ?? [] : routeChanged ? baselineRoute?.nodeIds ?? [] : [];
 
   function startJourney() {
     if (followingSimulation || !localRoute || localJourney.status === 'completed') return;
@@ -170,6 +181,7 @@ export function AmbulanceDashboardPage() {
       <aside className="ambulance-side-column" aria-label="Route guidance and emergency information">
         <EmergencyStatus journeyStatus={journey.status} pendingDispatches={pendingDispatches} />
         <NextTurnCard turn={turn} instruction={instruction} />
+        <PredictionInsight predictions={prediction.predictions} source={prediction.source} routeRoadIds={route?.roadIds ?? []} routeMessage={forecastNote} />
         <SignalAwareness signals={upcomingSignals} />
         <VoiceGuidance message={instruction} messageKey={messageKey} />
       </aside>

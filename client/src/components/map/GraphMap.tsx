@@ -16,6 +16,7 @@ interface GraphMapProps {
   routeTone?: 'emergency' | 'standard';
   focusNodeId?: string | null;
   previousRouteNodeIds?: string[];
+  forecastRoads?: { roadId: string; level: 'high' | 'severe'; riskScore: number }[];
 }
 
 export interface GraphScenarioMarker {
@@ -57,6 +58,7 @@ export function GraphMap({
   routeTone = 'emergency',
   focusNodeId = null,
   previousRouteNodeIds = [],
+  forecastRoads = [],
 }: GraphMapProps) {
   const nodeById = new Map(city.nodes.map((node) => [node.id, node]));
   const routeNodes = route.nodeIds.map((id) => nodeById.get(id)).filter((node) => node !== undefined);
@@ -111,6 +113,15 @@ export function GraphMap({
         const [x2, y2] = project(city, to.lat, to.lng);
         return <line key={road.id} x1={x1} y1={y1} x2={x2} y2={y2} className={`graph-road ${road.blocked ? 'blocked' : ''}`} />;
       })}
+      {forecastRoads.map((forecast) => {
+        const road = city.roads.find((item) => item.id === forecast.roadId);
+        const from = road && nodeById.get(road.from);
+        const to = road && nodeById.get(road.to);
+        if (!road || !from || !to) return null;
+        const [x1, y1] = project(city, from.lat, from.lng);
+        const [x2, y2] = project(city, to.lat, to.lng);
+        return <line key={`forecast-${road.id}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={forecast.level === 'severe' ? '#e7786b' : '#f0bd6d'} strokeWidth="8" strokeDasharray="5 9" opacity=".82"><title>{road.name} · {forecast.level} forecast risk · {forecast.riskScore}/100 · demo</title></line>;
+      })}
       {showRoute && previousRouteNodeIds.length > 1 && <polyline points={previousRoutePoints} fill="none" stroke="#91a99d" strokeWidth="5" strokeDasharray="10 10" opacity=".78" />}
       {showRoute && <><polyline points={routePoints} className="graph-route-shadow" /><polyline points={routePoints} className="graph-route-line" filter="url(#route-glow)" /></>}
       {showIncidents && cautionRoads.map(({ road, point: [x, y] }) => <g key={road.id} className="graph-warning">
@@ -150,6 +161,6 @@ export function GraphMap({
       })}
     </svg>
     <div className="graph-map-label"><span className="live-dot" />{followAmbulance ? 'FOLLOW AMBULANCE' : 'ROUTE GRAPH'} · BENGALURU DEMO</div>
-    <div className="graph-map-legend" aria-label="Map legend"><span><i className="legend-route" />{routeTone === 'standard' ? 'Selected route' : 'Emergency route'}</span>{previousRouteNodeIds.length > 1 && <span>Dashed · previous route</span>}<span><i className="legend-signal" />Signals</span><span><i className="legend-warning" />Road caution</span></div>
+    <div className="graph-map-legend" aria-label="Map legend"><span><i className="legend-route" />{routeTone === 'standard' ? 'Selected route' : 'Emergency route'}</span>{previousRouteNodeIds.length > 1 && <span>Dashed · previous route</span>}{forecastRoads.length > 0 && <span>Amber/red dashes · future risk</span>}<span><i className="legend-signal" />Signals</span><span><i className="legend-warning" />Road caution</span></div>
   </div>;
 }

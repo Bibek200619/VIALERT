@@ -35,6 +35,10 @@ vialert/
           dynamicRouting.ts
           incidentFeed.ts
           useRouteConditions.ts
+        prediction/
+          predictionModel.ts
+          usePredictions.ts
+          PredictionPanel.tsx
       components/
         map/
         layout/
@@ -68,6 +72,7 @@ vialert/
     bases.json
     adjacency.json
     vehicles.json
+    prediction_inputs.json
   docs/
 ```
 
@@ -79,6 +84,10 @@ polling, panels, and same-browser simulation snapshot. The routing feature owns
 Phase 5 cost factors, incident projection, and the driver condition feed. Node
 owns mock signal, incident, alert, and event records but does not advance the
 client's simulation clock or calculate a production route.
+The Phase 6 prediction feature owns the browser fallback rules, shared demo
+assumptions, batch API hook, forecast cards, and compact cross-workspace insight.
+FastAPI owns the canonical explainable forecast schema and scoring. Node remains
+an incident/signal mock API, not a prediction gateway or trained model host.
 
 ## Documentation Mapping
 
@@ -87,6 +96,6 @@ client's simulation clock or calculate a production route.
 | `00-simulation-demo` | `client/src/features/simulation` and `server-node/src/services/simulationService.js`, `scenarioService.js` |
 | `01-ambulance-dashboard` | `client/src/features/ambulance` and `client/src/pages/AmbulanceDashboardPage.tsx` |
 | `02-traffic-incharge-dashboard` | `client/src/features/traffic` and `client/src/pages/TrafficControlPage.tsx` |
-| `03-ai-traffic-prediction` | `server-ai/app` |
+| `03-ai-traffic-prediction` | `server-ai/app` and `client/src/features/prediction` |
 | `04-backend-realtime` | `server-node/src` |
 | `05-map-data-routing` | `shared-data` and `client/src/features/routing` |

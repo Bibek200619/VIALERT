@@ -2,36 +2,36 @@
 
 ## Opening
 
-VIALERT is an emergency traffic support system. Since we cannot run a real ambulance through the city for this hackathon, this MVP uses a simulation to show the complete workflow: ambulance routing, traffic-signal control, and AI traffic prediction.
+VIALERT is an emergency mobility demo. A hardcoded city graph and one mock ambulance show routing, simulated operator decisions, and explainable future traffic risk. Nothing here operates real infrastructure.
 
 ## Step 1: Ambulance Dashboard
 
 Show the ambulance driver dashboard. Point out the base location, hospital, route, ambulance marker, and traffic signals.
 
-## Step 2: Start Emergency
+## Step 2: Start the demo journey
 
-Start the ambulance trip. The ambulance begins moving on the route. The driver can see green lights ahead.
+Start the ambulance trip. Its marker advances through graph nodes; the driver sees upcoming simulated signal states, not actual light control.
 
 ## Step 3: Traffic In-charge Dashboard
 
-Switch to the government/traffic dashboard. Show that the operator receives an alert when the ambulance approaches a signal.
+Switch to Traffic Operations. Show the demo fleet, route, signal awareness, and operator alerts.
 
 ## Step 4: Manual Signal Control
 
-Change a signal manually. Explain that this is a simulation of operator-assisted traffic control.
+Change a mock signal manually. Explain that only in-memory demo state changes.
 
-## Step 5: AI Prediction
+## Step 5: Phase 6 traffic forecast
 
-Show a predicted traffic zone. Explain that the model considers time, weather, office hours, holidays, and historical-style data.
+In the Traffic Prediction desk, show severe Silk Board risk at the default weekday 18:00. Select the card for factors and an operator suggestion. Switch to **Heavy rain**: five corridors become high/severe, Koramangala's R3 forecast raises the ambulance ETA, and an alert explains the change. The dashed map overlay marks future risk. This is a deterministic heuristic with mock inputs, not trained AI or a live traffic feed.
 
 ## Step 6: Rerouting
 
-Add congestion or a blocked road. The system updates the route using A*.
+On `/ambulance`, show the R3 forecast cost and written ETA warning. In `/simulation`, activate a high-severity accident on R3; its incident-only A* movement reroutes, the timeline logs why, and the forecast insight highlights the affected corridor. Return to `/traffic`, select Koramangala, and show the accident factor. Deactivate the scenario and set weather back to Clear.
 
 ## Step 7: Simulation Summary
 
-Show the trip summary: route taken, signals changed, alerts generated, predicted traffic zone, and reroute event.
+Show the route, mocked signal/incident decisions, alert, forecast risk, and reroute event. Simulation replay retains incident-only timing; driver/operator route previews can include optional forecast cost.
 
 ## Closing
 
-The MVP proves the core workflow through simulation: ambulance route visibility, operator control, green-light corridor, and AI-based traffic prediction.
+The MVP demonstrates route visibility, simulated operator control, and explainable future-risk scoring. It does not use real GPS, traffic feeds, or a trained production prediction model.

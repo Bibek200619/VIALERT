@@ -12,6 +12,8 @@ import { useSimulation } from '../features/simulation/hooks/useSimulation';
 import { getScenarioTemplates } from '../features/simulation/simulationData';
 import { applyScenarioEffects } from '../features/simulation/simulationEngine';
 import type { CameraMode } from '../features/simulation/simulationTypes';
+import { PredictionInsight } from '../features/prediction/PredictionPanel';
+import { usePredictions } from '../features/prediction/usePredictions';
 
 const SimulationMap = lazy(() => import('../features/simulation/components/SimulationMap').then((module) => ({ default: module.SimulationMap })));
 
@@ -21,6 +23,8 @@ export function SimulationPage() {
   const [cameraMode, setCameraMode] = useState<CameraMode>('map');
   const templates = useMemo(() => getScenarioTemplates(city), [city]);
   const effectiveCity = useMemo(() => applyScenarioEffects(city, [...state.scenarios, ...state.externalScenarios]).city, [city, state.scenarios, state.externalScenarios]);
+  const activeConditions = useMemo(() => [...state.scenarios, ...state.externalScenarios].filter((scenario) => scenario.active), [state.scenarios, state.externalScenarios]);
+  const prediction = usePredictions(effectiveCity, activeConditions);
   const currentNode = city.nodes.find((node) => node.id === state.currentNodeId);
   const nextRoad = effectiveCity.roads.find((road) => road.id === state.routeRoadIds[0]);
   const totalDistance = state.distanceTravelledMeters + state.distanceRemainingMeters;
@@ -88,10 +92,11 @@ export function SimulationPage() {
           onRemove={simulation.removeScenario}
         />
         <EnvironmentPanel city={city} state={state} />
+        <PredictionInsight predictions={prediction.predictions} source={prediction.source} routeRoadIds={state.routeRoadIds} highlightedRoadIds={activeConditions.flatMap((condition) => condition.roadId ? [condition.roadId] : [])} routeMessage="Forecast cost is previewed in Ambulance and Traffic; this replay uses incident-aware movement." />
         <ScenarioVoiceAlerts state={state} />
         <EventTimeline events={state.events} />
       </aside>
     </div>
-    <p className="demo-disclaimer">Deterministic, local simulation · hardcoded Bengaluru-inspired city graph · mock scenario effects · no real emergency dispatch, vehicle tracking, traffic signals, or prediction service integration.</p>
+    <p className="demo-disclaimer">Deterministic local simulation · mock scenario effects and heuristic traffic outlook · no real emergency dispatch, vehicle tracking, signal control, or live traffic feed.</p>
   </section>;
 }
