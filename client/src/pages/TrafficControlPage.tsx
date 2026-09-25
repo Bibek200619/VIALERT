@@ -36,6 +36,6 @@ export function TrafficControlPage() {
       <IncidentControlPanel city={operations.city} incidents={operations.incidents} selected={selected} onAdd={operations.addIncident} onRemove={operations.removeIncident} />
       <EventLog events={operations.events} onClear={operations.clearLog} />
     </div>
-    <p className="demo-disclaimer">All positions, routes, alerts, signals, and controls are simulated. Same-browser Phase 3 movement is reflected when available; no government feed or real traffic light is connected.</p>
+    <p className="demo-disclaimer">All positions, routes, alerts, signals, and controls are simulated. Same-browser simulation movement is reflected when available; no government feed or real traffic light is connected.</p>
   </section>;
 }

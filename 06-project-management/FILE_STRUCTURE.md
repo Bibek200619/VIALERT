@@ -11,6 +11,7 @@ vialert/
         AmbulanceDashboardPage.tsx
         TrafficControlPage.tsx
         SimulationPage.tsx
+        DemoPage.tsx
       features/
         ambulance/
           components/
@@ -39,6 +40,9 @@ vialert/
           predictionModel.ts
           usePredictions.ts
           PredictionPanel.tsx
+        demo/
+          demoReset.ts
+          DemoResetButton.tsx
       components/
         map/
         layout/
@@ -47,6 +51,7 @@ vialert/
         apiClient.ts
         socketClient.ts
       styles/
+        demo.css
   server-node/
     src/
       routes/
@@ -88,6 +93,9 @@ The Phase 6 prediction feature owns the browser fallback rules, shared demo
 assumptions, batch API hook, forecast cards, and compact cross-workspace insight.
 FastAPI owns the canonical explainable forecast schema and scoring. Node remains
 an incident/signal mock API, not a prediction gateway or trained model host.
+Phase 7 adds `/demo` as a small guide. Its reset utility owns the known
+same-browser demo keys and calls the existing Node reset endpoint; it does not
+replace feature-specific journey/simulation controls or add a new backend.
 
 ## Documentation Mapping
 
@@ -99,3 +107,4 @@ an incident/signal mock API, not a prediction gateway or trained model host.
 | `03-ai-traffic-prediction` | `server-ai/app` and `client/src/features/prediction` |
 | `04-backend-realtime` | `server-node/src` |
 | `05-map-data-routing` | `shared-data` and `client/src/features/routing` |
+| `06-project-management` | `client/src/features/demo`, `client/src/pages/DemoPage.tsx`, `DEMO_SCRIPT.md`, and `SCREENSHOT_CHECKLIST.md` |

@@ -25,7 +25,7 @@ const connectionLabels: Record<ApiConnection, string> = {
 export function SimulationHeader({ state, connection, onReset }: SimulationHeaderProps) {
   return <>
     <div className="page-heading dashboard-title-row simulation-title-row">
-      <div><span className="eyebrow">Emergency mobility · Phase 3</span><h1>Simulation Control Center</h1><p>Run a deterministic ambulance journey, introduce local scenarios, and replay the route.</p></div>
+      <div><span className="eyebrow">Emergency mobility · scenario lab</span><h1>Simulation Control Center</h1><p>Run a deterministic ambulance journey, introduce local scenarios, and replay the route.</p></div>
       <span className="outline-label">BENGALURU · DEMO CITY</span>
     </div>
     <section className="simulation-header panel" aria-label="Simulation status">

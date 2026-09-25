@@ -2,6 +2,7 @@ import { NavLink } from 'react-router';
 import { Icon } from '../Icon';
 
 const workspaces = [
+  { to: '/demo', label: 'Judge demo', icon: 'layers' },
   { to: '/ambulance', label: 'Ambulance driver', icon: 'ambulance' },
   { to: '/traffic', label: 'Traffic control', icon: 'control' },
   { to: '/simulation', label: 'Simulation demo', icon: 'simulation' },

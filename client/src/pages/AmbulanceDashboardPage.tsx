@@ -144,7 +144,7 @@ export function AmbulanceDashboardPage() {
 
   return <section className="ambulance-page">
     <div className="page-heading dashboard-title-row">
-      <div><span className="eyebrow">Emergency mobility · Phase 2</span><h1>Ambulance Driver Dashboard</h1><p>One clear route, upcoming signals, and a replayable demo journey.</p></div>
+      <div><span className="eyebrow">Emergency mobility · simulated driver view</span><h1>Ambulance Driver Dashboard</h1><p>One clear route, upcoming signals, and a replayable demo journey.</p></div>
       <span className="outline-label">SIMULATED JOURNEY</span>
     </div>
 
