@@ -36,6 +36,7 @@ export function AmbulanceDashboardPage() {
   const [requestedDestinationId, setRequestedDestinationId] = useState('HOSP-2');
   const [pendingDispatches, setPendingDispatches] = useState(0);
   const [actionNotice, setActionNotice] = useState('');
+  const [navigationMode, setNavigationMode] = useState(false);
   const conditions = useRouteConditions(city);
   const prediction = usePredictions(conditions.city, conditions.hazards);
   const combinedCosts = useMemo(() => combineCostMultipliers(conditions.roadCostMultipliers, prediction.costMultipliers), [conditions.roadCostMultipliers, prediction.costMultipliers]);
@@ -114,6 +115,11 @@ export function AmbulanceDashboardPage() {
       : 'Default demo corridor ready.';
   const routeMessage = forecastNote ? incidentMessage === 'Default demo corridor ready.' ? forecastNote : `${incidentMessage} ${forecastNote}` : incidentMessage;
   const previousRouteNodeIds = followingSimulation ? simulationState?.previousRouteNodeIds ?? [] : forecastNote && forecastPathChanged ? routeWithoutForecast?.nodeIds ?? [] : routeChanged ? baselineRoute?.nodeIds ?? [] : [];
+  const remainingDistanceMeters = route ? followingSimulation ? route.totalDistanceMeters : Math.max(0, route.totalDistanceMeters - journey.distanceTravelledMeters) : 0;
+  const remainingEtaMinutes = route && route.totalDistanceMeters > 0
+    ? Math.max(0, Math.ceil((route.etaSeconds * (remainingDistanceMeters / route.totalDistanceMeters)) / 60))
+    : 0;
+  const simulatedSpeedKph = journey.status === 'active' ? 42 : 0;
 
   function startJourney() {
     if (followingSimulation || !localRoute || localJourney.status === 'completed') return;
@@ -132,6 +138,7 @@ export function AmbulanceDashboardPage() {
   async function resetJourney() {
     if (followingSimulation) return;
     reset();
+    setNavigationMode(false);
     setActionNotice('Local journey reset.');
     try {
       await apiClient.resetSimulation();
@@ -142,52 +149,81 @@ export function AmbulanceDashboardPage() {
     }
   }
 
-  return <section className="ambulance-page">
-    <div className="page-heading dashboard-title-row">
-      <div><span className="eyebrow">Emergency mobility · simulated driver view</span><h1>Ambulance Driver Dashboard</h1><p>One clear route, upcoming signals, and a replayable demo journey.</p></div>
-      <span className="outline-label">SIMULATED JOURNEY</span>
-    </div>
+  return <section className="ambulance-page ambulance-driver-ui">
+    <div className="driver-screen">
+      <Suspense fallback={<div className="map-loading panel driver-map-loading" role="status">Loading navigation map…</div>}>
+        <NavigationMap
+          city={conditions.city}
+          route={route ?? { nodeIds: [], roadIds: [], totalDistanceMeters: 0, etaSeconds: 0 }}
+          ambulance={ambulancePosition}
+          destinationName={destinationName}
+          previousRouteNodeIds={previousRouteNodeIds}
+          navigationMode={navigationMode}
+        />
+      </Suspense>
 
-    <AmbulanceHeader connection={connection} journeyStatus={journey.status} source={citySource} simulationTime={formatSimulationTime(followingSimulation ? simulationState?.simulationTimeSeconds ?? 0 : journey.elapsedSeconds)} />
-
-    {isLoading && <p className="load-message" role="status">Connecting to the Node API. The shared demo graph is ready meanwhile.</p>}
-
-    <section className="journey-toolbar panel" aria-label="Journey setup and controls">
-      <div className="destination-control">
-        <label htmlFor="hospital-destination">Destination hospital</label>
-        <select id="hospital-destination" value={destinationId} onChange={(event) => setRequestedDestinationId(event.target.value)} disabled={followingSimulation || journey.status === 'active' || journey.status === 'paused'}>
-          {city.hospitals.map((hospital) => <option value={hospital.id} key={hospital.id}>{hospital.name.replace(' (demo)', '')}</option>)}
-        </select>
+      <div className="driver-status-strip" aria-label="Ambulance and destination status">
+        <span className="driver-ambulance-id"><i aria-hidden="true" />AMB-07</span>
+        <span className="driver-current-road">{currentLocation}</span>
+        <span className="driver-destination">To {destinationName}</span>
       </div>
-      <div className="journey-action-group">
-        <span className="journey-mode-label"><i aria-hidden="true" />{followingSimulation ? 'Following same-browser Simulation' : 'Deterministic demo route'}</span>
-        <div className="journey-buttons">
-          {followingSimulation ? <Link className="button button-primary" to="/simulation">Control in Simulation</Link>
+
+      <div className="driver-turn-overlay">
+        <NextTurnCard turn={turn} instruction={instruction} />
+      </div>
+
+      <div className="driver-speed-cluster" aria-label="Simulated driving speed">
+        <div className="driver-speed"><strong>{simulatedSpeedKph}</strong><span>km/h</span></div>
+        <div className="driver-speed-limit"><strong>50</strong><span>limit</span></div>
+      </div>
+
+      <div className="driver-journey-controls" aria-label="Journey setup and controls">
+        <label className="driver-destination-select" htmlFor="hospital-destination">
+          <span>Destination</span>
+          <select id="hospital-destination" value={destinationId} onChange={(event) => setRequestedDestinationId(event.target.value)} disabled={followingSimulation || journey.status === 'active' || journey.status === 'paused'}>
+            {city.hospitals.map((hospital) => <option value={hospital.id} key={hospital.id}>{hospital.name.replace(' (demo)', '')}</option>)}
+          </select>
+        </label>
+        <div className="driver-action-buttons">
+          {followingSimulation ? <Link className="driver-compact-button" to="/simulation">Simulation controls</Link>
             : localJourney.status === 'active'
-              ? <button className="button button-secondary" type="button" onClick={pause} aria-label="Pause ambulance journey">Pause journey</button>
-              : <button className="button button-primary" type="button" onClick={() => void startJourney()} disabled={!localRoute || localJourney.status === 'completed'} aria-label={localJourney.status === 'paused' ? 'Resume ambulance journey' : 'Start ambulance journey'}>{localJourney.status === 'paused' ? 'Resume journey' : 'Start journey'}</button>}
-          <button className="button button-secondary" type="button" onClick={() => void resetJourney()} disabled={followingSimulation} aria-label="Reset ambulance journey and demo API state">Reset journey</button>
+              ? <button className="driver-compact-button" type="button" onClick={pause} aria-label="Pause ambulance journey">Pause</button>
+              : <button className="driver-compact-button primary" type="button" onClick={() => void startJourney()} disabled={!localRoute || localJourney.status === 'completed'} aria-label={localJourney.status === 'paused' ? 'Resume ambulance journey' : 'Start ambulance journey'}>{localJourney.status === 'paused' ? 'Resume' : 'Start'}</button>}
+          <button className="driver-compact-button" type="button" onClick={() => void resetJourney()} disabled={followingSimulation} aria-label="Reset ambulance journey and demo API state">Reset</button>
         </div>
       </div>
-    </section>
 
-    {actionNotice && <p className="action-notice" role="status" aria-live="polite">{actionNotice}</p>}
+      <button className={`driver-navigation-pill${navigationMode ? ' active' : ''}`} type="button" onClick={() => setNavigationMode((enabled) => !enabled)} aria-pressed={navigationMode} aria-label={navigationMode ? 'Leave close navigation view' : 'Enter close navigation view'}>
+        <span className="driver-navigation-icon" aria-hidden="true">➤</span>
+        <span>Navigation</span>
+        <small>{navigationMode ? 'ON' : 'OFF'}</small>
+      </button>
 
-    <div className="ambulance-grid">
-      <div className="ambulance-primary-column">
-        <Suspense fallback={<div className="map-loading panel" role="status">Loading the navigation map…</div>}><NavigationMap city={conditions.city} route={route ?? { nodeIds: [], roadIds: [], totalDistanceMeters: 0, etaSeconds: 0 }} ambulance={ambulancePosition} destinationName={destinationName} previousRouteNodeIds={previousRouteNodeIds} /></Suspense>
-        <RouteSummary route={route} journey={journey} baseName={base?.name.replace(' (demo)', '') ?? 'Ambulance base unavailable'} currentLocation={currentLocation} destinationName={destinationName} routeStatus={routeStatus} routeMessage={routeMessage} />
+      <div className="driver-route-deck" aria-label="Route summary">
+        <div><strong>{route ? `${(remainingDistanceMeters / 1000).toFixed(1)} km` : '—'}</strong><span>remaining</span></div>
+        <div><strong>{route ? `${remainingEtaMinutes} min` : '—'}</strong><span>ETA</span></div>
+        <div><strong>{upcomingSignals.filter((signal) => signal.state === 'green').length}</strong><span>green signals ahead</span></div>
+        <div className={`driver-corridor-state ${routeStatus}`}><strong>{routeStatus === 'clear' ? 'Clear' : routeStatus === 'rerouted' ? 'Rerouted' : routeStatus === 'impacted' ? 'Caution' : 'Unavailable'}</strong><span>corridor</span></div>
       </div>
-      <aside className="ambulance-side-column" aria-label="Route guidance and emergency information">
+
+      {isLoading && <p className="driver-map-notice" role="status">Connecting to the demo API…</p>}
+    </div>
+
+    {actionNotice && <p className="action-notice driver-action-notice" role="status" aria-live="polite">{actionNotice}</p>}
+
+    <details className="driver-details panel">
+      <summary>Trip details, signals and forecast</summary>
+      <div className="driver-details-grid">
+        <AmbulanceHeader connection={connection} journeyStatus={journey.status} source={citySource} simulationTime={formatSimulationTime(followingSimulation ? simulationState?.simulationTimeSeconds ?? 0 : journey.elapsedSeconds)} />
+        <RouteSummary route={route} journey={journey} baseName={base?.name.replace(' (demo)', '') ?? 'Ambulance base unavailable'} currentLocation={currentLocation} destinationName={destinationName} routeStatus={routeStatus} routeMessage={routeMessage} />
         <EmergencyStatus journeyStatus={journey.status} pendingDispatches={pendingDispatches} />
-        <NextTurnCard turn={turn} instruction={instruction} />
         <PredictionInsight predictions={prediction.predictions} source={prediction.source} routeRoadIds={route?.roadIds ?? []} routeMessage={forecastNote} />
         <SignalAwareness signals={upcomingSignals} />
         <VoiceGuidance message={instruction} messageKey={messageKey} />
-      </aside>
-    </div>
+      </div>
+    </details>
 
     {(!baseNode || !destinationNode || !route) && <p className="route-error" role="alert">{routeMessage}</p>}
-    <p className="demo-disclaimer">Bengaluru-inspired hardcoded graph · mock signal awareness · no real emergency dispatch, GPS tracking, or traffic-signal control.</p>
+    <p className="demo-disclaimer driver-demo-disclaimer">Bengaluru-inspired hardcoded graph · simulated vehicle movement and signal status · no real dispatch, GPS tracking, or traffic-signal control.</p>
   </section>;
 }
