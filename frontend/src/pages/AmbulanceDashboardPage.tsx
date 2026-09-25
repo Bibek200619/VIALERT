@@ -203,7 +203,7 @@ export function AmbulanceDashboardPage() {
       <div className="driver-route-deck" aria-label="Route summary">
         <div><strong>{route ? `${(remainingDistanceMeters / 1000).toFixed(1)} km` : '—'}</strong><span>remaining</span></div>
         <div><strong>{route ? `${remainingEtaMinutes} min` : '—'}</strong><span>ETA</span></div>
-        <div><strong>{upcomingSignals.filter((signal) => signal.state === 'green').length}</strong><span>green signals ahead</span></div>
+        <div><strong>{upcomingSignals.filter((item) => item.signal.state === 'green').length}</strong><span>green signals ahead</span></div>
         <div className={`driver-corridor-state ${routeStatus}`}><strong>{routeStatus === 'clear' ? 'Clear' : routeStatus === 'rerouted' ? 'Rerouted' : routeStatus === 'impacted' ? 'Caution' : 'Unavailable'}</strong><span>corridor</span></div>
       </div>
 
