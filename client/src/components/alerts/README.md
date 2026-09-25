@@ -1,3 +1,5 @@
 # Alert components
 
-Reserved for later emergency and incident alert views. No realtime alerts are implemented in Phase 1.
+This is a historical Phase 1 placeholder. The live alert panels are owned by
+`features/traffic` and the simulation timeline; no production realtime alert
+transport is implied by this directory.

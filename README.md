@@ -190,8 +190,9 @@ close both `R10 · South Hospital Access` and `R12 · Silk Board–South Hospita
 Link`; the UI names the closures and stays usable until one is cleared.
 
 This is a hardcoded Bengaluru-inspired graph with heuristic costs, not real
-traffic or live dispatch. There is no production GPS, authority system, AI
-prediction input, database, or WebSocket service in Phase 5. See the
+traffic or live dispatch. Phase 5 itself does not add live prediction input;
+Phase 6's forecast desk remains heuristic and browser/API-local. There is no
+production GPS, authority system, database, or WebSocket service. See the
 [routing notes](05-map-data-routing/ASTAR_ROUTING.md) and
 [API contract](04-backend-realtime/API_SPEC.md).
 
@@ -223,9 +224,9 @@ Koramangala, and show the accident factor and operator pre-action. Clear the
 scenario and weather assumption to return to baseline. These are deterministic
 mock values, not measured travel-time or forecast accuracy.
 
-## What Phase 1 includes
+## Current MVP foundation and boundaries
 
-- Dark VIALERT navigation shell with three browsable workspace destinations.
+- Dark VIALERT navigation shell with four browsable routes, including the judge guide at `/demo`.
 - Shared data: nine nodes, twelve road links, six signals, one base, two fictional
   hospitals, six editable scenario presets, six Phase 6 forecast inputs, and two demo vehicles.
 - Validated mock APIs with disposable in-memory state and a reset endpoint.
@@ -261,8 +262,9 @@ scripts/        Data integrity tests and live smoke checks
 - [API inventory](04-backend-realtime/API_SPEC.md)
 - [Build plan and next phases](06-project-management/BUILD_PLAN.md)
 
-The following documentation describes the overall MVP vision, including features
-that are **not implemented yet**.
+The following documentation preserves the original MVP vision and future
+integration boundaries; the implementation status above is the current source
+of truth.
 
 ## Overall MVP vision
 
