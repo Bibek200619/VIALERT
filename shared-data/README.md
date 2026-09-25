@@ -23,6 +23,10 @@ congestion levels are invented demo values; no real traffic source is connected.
   view. Each vehicle references origin, current, and destination node IDs and
   supplies a fictional number, crew, speed, status, and priority. Only the
   ambulance follows Phase 3 movement, through a browser-local snapshot.
+- `prediction_inputs.json`: six Phase 6 forecast examples, each referencing an
+  existing road and nearby graph area (Silk Board, Koramangala, Indiranagar,
+  MG Road, Electronic City, Whitefield). The browser combines them with active
+  mock conditions before requesting FastAPI. These are not historical samples.
 
 When adding a road, update both adjacency entries. When renaming an ID, update all
 references. Run `npm run test:data` to check graph integrity. Restart Node (or call

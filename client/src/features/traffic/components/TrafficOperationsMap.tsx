@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import { GraphMap } from '../../../components/map/GraphMap';
-import type { CityData, IncidentRecord } from '../../../services/apiClient';
+import type { CityData, IncidentRecord, TrafficForecast } from '../../../services/apiClient';
 import type { OperationsVehicle } from '../trafficTypes';
 
 type FocusMode = 'all' | 'selected';
@@ -29,7 +29,7 @@ function iconFor(vehicle: OperationsVehicle, selected: boolean) {
   return L.divIcon({ className: 'vialert-marker-host', html: `<span class="traffic-map-vehicle ${vehicle.type}${selected ? ' selected' : ''}" aria-hidden="true">${label}</span>`, iconSize: [38, 38], iconAnchor: [19, 19] });
 }
 
-export function TrafficOperationsMap({ city, vehicles, selected, incidents, focusedNodeId, onClearLocation }: { city: CityData; vehicles: OperationsVehicle[]; selected: OperationsVehicle | null; incidents: IncidentRecord[]; focusedNodeId: string | null; onClearLocation: () => void }) {
+export function TrafficOperationsMap({ city, vehicles, selected, incidents, predictions, focusedNodeId, onClearLocation }: { city: CityData; vehicles: OperationsVehicle[]; selected: OperationsVehicle | null; incidents: IncidentRecord[]; predictions: TrafficForecast[]; focusedNodeId: string | null; onClearLocation: () => void }) {
   const [graphOnly, setGraphOnly] = useState(false);
   const [tileLoaded, setTileLoaded] = useState(false);
   const [tileFailed, setTileFailed] = useState(false);
@@ -37,6 +37,7 @@ export function TrafficOperationsMap({ city, vehicles, selected, incidents, focu
   const [showSignals, setShowSignals] = useState(true);
   const [showIncidents, setShowIncidents] = useState(true);
   const [showRoutes, setShowRoutes] = useState(true);
+  const [showForecast, setShowForecast] = useState(true);
   const nodeById = useMemo(() => new Map(city.nodes.map((node) => [node.id, node])), [city.nodes]);
   const selectedNode = selected && nodeById.get(selected.currentNodeId);
   const destination = selected && nodeById.get(selected.destinationNodeId);
@@ -50,6 +51,8 @@ export function TrafficOperationsMap({ city, vehicles, selected, incidents, focu
     const to = road && nodeById.get(road.to);
     return road && from && to ? [{ incident, road, position: [(from.lat + to.lat) / 2, (from.lng + to.lng) / 2] as [number, number] }] : [];
   });
+  const forecastRoads = predictions.flatMap((item) => item.predictedCongestion === 'high' || item.predictedCongestion === 'severe'
+    ? [{ roadId: item.roadId, level: item.predictedCongestion, riskScore: item.riskScore }] : []);
   useEffect(() => {
     if (graphOnly || tileLoaded || tileFailed) return undefined;
     const timer = window.setTimeout(() => setTileFailed(true), 5000);
@@ -66,14 +69,16 @@ export function TrafficOperationsMap({ city, vehicles, selected, incidents, focu
       <button type="button" onClick={() => setShowSignals((value) => !value)} aria-pressed={showSignals}>Signals</button>
       <button type="button" onClick={() => setShowIncidents((value) => !value)} aria-pressed={showIncidents}>Incidents</button>
       <button type="button" onClick={() => setShowRoutes((value) => !value)} aria-pressed={showRoutes}>Routes</button>
+      <button type="button" onClick={() => setShowForecast((value) => !value)} aria-pressed={showForecast}>Future risk</button>
       <button type="button" onClick={() => { setGraphOnly((value) => !value); setTileFailed(false); setTileLoaded(false); }}>{useGraph ? 'Use map view' : 'Use graph fallback'}</button>
     </div>
     <div className="map-frame traffic-map-frame">
-      {useGraph ? <GraphMap city={city} route={route} ambulance={selected?.type === 'ambulance' && selectedNode ? { lat: selectedNode.lat, lng: selectedNode.lng, currentNodeId: selectedNode.id, currentRoadName: selectedNode.name, segmentIndex: 0 } : null} destinationName={destination?.name ?? 'Destination'} baseNodeId={base?.id} destinationNodeId={destination?.id} followAmbulance={focusMode === 'selected'} focusNodeId={focusedNodeId} showSignals={showSignals} showIncidents={showIncidents} showRoute={showRoutes} routeTone={selected?.type === 'ambulance' ? 'emergency' : 'standard'} previousRouteNodeIds={selected?.previousRouteNodeIds} scenarioMarkers={incidentMarkers.map(({ incident, road }) => ({ id: incident.id, name: road.name, type: incident.type, severity: incident.severity, roadId: incident.roadId }))} otherVehicles={vehicles.filter((vehicle) => vehicle.id !== selected?.id || vehicle.type !== 'ambulance').flatMap((vehicle) => { const node = nodeById.get(vehicle.currentNodeId); return node ? [{ id: vehicle.id, type: vehicle.type, lat: node.lat, lng: node.lng, selected: vehicle.id === selected?.id }] : []; })} />
+      {useGraph ? <GraphMap city={city} route={route} ambulance={selected?.type === 'ambulance' && selectedNode ? { lat: selectedNode.lat, lng: selectedNode.lng, currentNodeId: selectedNode.id, currentRoadName: selectedNode.name, segmentIndex: 0 } : null} destinationName={destination?.name ?? 'Destination'} baseNodeId={base?.id} destinationNodeId={destination?.id} followAmbulance={focusMode === 'selected'} focusNodeId={focusedNodeId} showSignals={showSignals} showIncidents={showIncidents} showRoute={showRoutes} routeTone={selected?.type === 'ambulance' ? 'emergency' : 'standard'} previousRouteNodeIds={selected?.previousRouteNodeIds} forecastRoads={showForecast ? forecastRoads : []} scenarioMarkers={incidentMarkers.map(({ incident, road }) => ({ id: incident.id, name: road.name, type: incident.type, severity: incident.severity, roadId: incident.roadId }))} otherVehicles={vehicles.filter((vehicle) => vehicle.id !== selected?.id || vehicle.type !== 'ambulance').flatMap((vehicle) => { const node = nodeById.get(vehicle.currentNodeId); return node ? [{ id: vehicle.id, type: vehicle.type, lat: node.lat, lng: node.lng, selected: vehicle.id === selected?.id }] : []; })} />
         : <MapContainer center={[12.96, 77.62]} zoom={11} scrollWheelZoom={false} className="leaflet-map">
           <MapFocus city={city} vehicles={vehicles} selected={selected} mode={focusMode} focusedNodeId={focusedNodeId} />
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' url={tileUrl} eventHandlers={{ tileload: () => setTileLoaded(true), tileerror: () => setTileFailed(true) }} />
           {city.roads.map((road) => { const from = nodeById.get(road.from); const to = nodeById.get(road.to); return from && to ? <Polyline key={road.id} positions={[[from.lat, from.lng], [to.lat, to.lng]]} pathOptions={{ color: road.blocked ? '#e36d61' : road.congestion === 'high' ? '#dcaa58' : '#6c8175', weight: road.blocked ? 5 : 3, dashArray: road.blocked ? '5 7' : undefined }}><Popup>{road.name} · {road.blocked ? 'Blocked' : `${road.congestion} congestion`} · simulated</Popup></Polyline> : null; })}
+          {showForecast && forecastRoads.map((forecast) => { const road = city.roads.find((item) => item.id === forecast.roadId); const from = road && nodeById.get(road.from); const to = road && nodeById.get(road.to); return road && from && to ? <Polyline key={`forecast-${road.id}`} positions={[[from.lat, from.lng], [to.lat, to.lng]]} pathOptions={{ color: forecast.level === 'severe' ? '#e7786b' : '#f0bd6d', weight: 8, opacity: .8, dashArray: '5 9' }}><Popup>{road.name} · {forecast.level} future risk · {forecast.riskScore}/100 · heuristic demo</Popup></Polyline> : null; })}
           {showRoutes && previousRoutePositions.length > 1 && <Polyline positions={previousRoutePositions} pathOptions={{ color: '#a1b2a5', weight: 4, opacity: .7, dashArray: '9 10' }} />}
           {showRoutes && routePositions.length > 1 && <Polyline positions={routePositions} pathOptions={{ color: selected?.type === 'ambulance' ? '#aaf17b' : '#75c9e8', weight: 6, opacity: .96 }} />}
           {city.bases.map((item) => { const node = nodeById.get(item.nodeId); return node ? <CircleMarker key={item.id} center={[node.lat, node.lng]} radius={9} pathOptions={{ color: '#d5dfdb', fillColor: '#a1b5ac', fillOpacity: 1 }}><Popup>{item.name}</Popup></CircleMarker> : null; })}
@@ -84,6 +89,6 @@ export function TrafficOperationsMap({ city, vehicles, selected, incidents, focu
         </MapContainer>}
       {tileFailed && !graphOnly && <p className="map-fallback-note" role="status">Street tiles unavailable. Shared city graph shown.</p>}
     </div>
-    <div className="map-footer"><span>Green ambulance route · blue other route · red closure · amber congestion</span><span>{useGraph ? 'Local graph fallback' : '© OpenStreetMap contributors'}</span></div>
+    <div className="map-footer"><span>Green route · red closure · amber congestion · dashed amber/red future risk</span><span>{useGraph ? 'Local graph fallback' : '© OpenStreetMap contributors'}</span></div>
   </section>;
 }

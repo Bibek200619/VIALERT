@@ -5,7 +5,8 @@ The Node service is a local mock API with in-memory state. All responses include
 live traffic, or persists records. Existing Phase 1 routes and response shapes
 remain available alongside the Phase 3 simulation/incident and Phase 4 operator routes.
 Phase 5 reuses these mock incident endpoints for dynamic browser-side routing;
-it does not add a database or production route service.
+Phase 6 uses their mock state as prediction factors. Neither adds a database
+or production route service.
 
 ## Node.js API
 
@@ -77,9 +78,16 @@ runs the local simulation.
 
 ## Python FastAPI
 
-FastAPI exposes `GET /health`, `POST /predict-traffic`, and `GET /predictions`.
-Predictions are deterministic demo rules with heuristic confidence, not a
-trained or calibrated model. See the [AI contract and rules](../server-ai/README.md).
+FastAPI preserves `GET /health`, `POST /predict-traffic`, and `GET /predictions`.
+Phase 6 adds `POST /predict/forecast` for one graph road and `POST /predict/batch`
+for 1–24 requests under `{ "requests": [...] }`. Responses include 0–100 risk,
+low/medium/high/severe congestion, a 30-minute window, ETA impact estimate,
+confidence label, every contributing factor, recommendations, and a demo
+disclaimer. Validation errors return 422. Vite proxies browser `/ai/*` requests
+to FastAPI; Node does not proxy predictions. The browser uses an explicitly
+labeled local heuristic fallback when FastAPI is offline. See the
+[AI contract and rules](../server-ai/README.md). These are mock rules, not
+trained or calibrated forecasts.
 
 ## Errors and development
 

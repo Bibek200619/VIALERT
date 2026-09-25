@@ -8,7 +8,7 @@ export function AppLayout() {
   const workspace = pathname === '/simulation'
     ? { phase: '03', name: 'Simulation control', description: 'A replayable route and local scenario workspace.', badge: 'Phase 3 · simulation engine' }
     : pathname === '/traffic'
-      ? { phase: '04', name: 'Traffic operations', description: 'Demo fleet, alerts, and simulated signal controls.', badge: 'Phase 4 · traffic operations' }
+      ? { phase: '06', name: 'Traffic operations', description: 'Demo fleet, signals, incidents, and traffic forecasts.', badge: 'Phase 6 · traffic prediction' }
       : { phase: '02', name: 'Ambulance navigation', description: 'A focused driver workspace for the Phase 2 demo.', badge: 'Phase 2 · ambulance navigation' };
   useEffect(() => {
     const title = pathname === '/traffic' ? 'Traffic-Control Dashboard'

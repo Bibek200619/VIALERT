@@ -9,6 +9,7 @@ import { TrafficHeader } from '../features/traffic/components/TrafficHeader';
 import { VehicleDetailPanel } from '../features/traffic/components/VehicleDetailPanel';
 import { VehicleList } from '../features/traffic/components/VehicleList';
 import { useTrafficOperations } from '../features/traffic/hooks/useTrafficOperations';
+import { PredictionPanel } from '../features/prediction/PredictionPanel';
 
 const TrafficOperationsMap = lazy(() => import('../features/traffic/components/TrafficOperationsMap').then((module) => ({ default: module.TrafficOperationsMap })));
 
@@ -22,9 +23,10 @@ export function TrafficControlPage() {
     {operations.connection === 'degraded' && <p className="traffic-offline-banner" role="status">Some mock API endpoints are unavailable. Available records and local demo data are shown together.</p>}
     {operations.notice && <p className="action-notice" role="status" aria-live="polite">{operations.notice}</p>}
     <CityOverview city={operations.city} vehicles={operations.vehicles} signals={operations.signals} incidents={operations.incidents} />
+    <PredictionPanel predictions={operations.prediction.predictions} source={operations.prediction.source} settings={operations.prediction.settings} onSettings={operations.prediction.updateSettings} onRefresh={operations.prediction.refresh} onFocus={operations.setFocusedNodeId} />
     <div className="traffic-main-grid">
       <VehicleList city={operations.city} vehicles={operations.visibleVehicles} selectedId={operations.selectedVehicleId} filter={operations.vehicleFilter} onFilter={operations.setVehicleFilter} onSelect={operations.selectVehicle} />
-      <Suspense fallback={<div className="panel map-loading" role="status">Loading the operations map…</div>}><TrafficOperationsMap city={operations.city} vehicles={operations.vehicles} selected={selected} incidents={operations.incidents} focusedNodeId={operations.focusedNodeId} onClearLocation={() => operations.setFocusedNodeId(null)} /></Suspense>
+      <Suspense fallback={<div className="panel map-loading" role="status">Loading the operations map…</div>}><TrafficOperationsMap city={operations.city} vehicles={operations.vehicles} selected={selected} incidents={operations.incidents} predictions={operations.prediction.predictions} focusedNodeId={operations.focusedNodeId} onClearLocation={() => operations.setFocusedNodeId(null)} /></Suspense>
       <VehicleDetailPanel city={operations.city} vehicle={selected} alerts={operations.alerts} />
     </div>
     <OperationsMetrics metrics={operations.metrics} />

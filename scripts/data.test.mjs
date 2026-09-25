@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (name) => JSON.parse(readFileSync(new URL(`../shared-data/${name}.json`, import.meta.url), 'utf8'));
-const [nodes, roads, signals, hospitals, bases, scenarios, adjacency, vehicles] =
-  ['nodes', 'roads', 'signals', 'hospitals', 'bases', 'scenarios', 'adjacency', 'vehicles'].map(read);
+const [nodes, roads, signals, hospitals, bases, scenarios, adjacency, vehicles, predictionInputs] =
+  ['nodes', 'roads', 'signals', 'hospitals', 'bases', 'scenarios', 'adjacency', 'vehicles', 'prediction_inputs'].map(read);
 const nodeIds = new Set(nodes.map(({ id }) => id));
 const roadById = new Map(roads.map((road) => [road.id, road]));
 
@@ -91,5 +91,23 @@ test('signal references and all six scenario presets use the valid simulation sc
     assert.equal(typeof scenario.active, 'boolean');
     assert.equal(typeof scenario.blocked, 'boolean');
     assert.equal(typeof scenario.description, 'string');
+  }
+});
+
+test('six forecast examples refer to distinct graph roads and valid factor values', () => {
+  assert.equal(predictionInputs.length, 6);
+  assert.equal(new Set(predictionInputs.map(({ roadId }) => roadId)).size, predictionInputs.length);
+  for (const input of predictionInputs) {
+    assert.ok(nodeIds.has(input.areaId));
+    assert.ok(roadById.has(input.roadId));
+    assert.match(input.timeOfDay, /^([01][0-9]|2[0-3]):[0-5][0-9]$/);
+    assert.ok(['weekday', 'weekend'].includes(input.dayType));
+    assert.ok(['clear', 'rain', 'heavy-rain'].includes(input.weather));
+    assert.ok(['none', 'light', 'moderate', 'heavy'].includes(input.rainIntensity));
+    assert.ok(['low', 'medium', 'high'].includes(input.currentCongestion));
+    assert.ok(Array.isArray(input.activeIncidents));
+    for (const field of ['isHoliday', 'officePeak', 'schoolPeak', 'eventNearby', 'emergencyPriorityActive']) {
+      assert.equal(typeof input[field], 'boolean');
+    }
   }
 });

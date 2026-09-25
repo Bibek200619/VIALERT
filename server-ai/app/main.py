@@ -1,4 +1,4 @@
-"""HTTP entry point for VIALERT's stateless Phase 1 prediction service."""
+"""HTTP entry point for the stateless Phase 6 forecast and legacy mock API."""
 
 import json
 import os
@@ -7,16 +7,16 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .model import predict_traffic
-from .schemas import Prediction, PredictionInput, PredictionList
+from .model import predict_forecast, predict_traffic
+from .schemas import Forecast, ForecastBatch, ForecastBatchInput, ForecastInput, Prediction, PredictionInput, PredictionList
 
 
 app = FastAPI(
     title="VIALERT mock prediction API",
     version="0.1.0",
     description=(
-        "Phase 1 foundation. All predictions are deterministic demo rules, "
-        "with heuristic confidence and no live traffic or trained model."
+        "Phase 6 explainable forecasts and backward-compatible Phase 1 predictions. "
+        "All outputs are deterministic demo rules without live traffic or a trained model."
     ),
 )
 app.add_middleware(
@@ -52,3 +52,13 @@ def predict(features: PredictionInput) -> Prediction:
 @app.get("/predictions", response_model=PredictionList, tags=["mock predictions"])
 def get_predictions() -> PredictionList:
     return PredictionList(predictions=[predict_traffic(item) for item in SAMPLE_INPUTS])
+
+
+@app.post("/predict/forecast", response_model=Forecast, tags=["Phase 6 forecasts"])
+def forecast(features: ForecastInput) -> Forecast:
+    return predict_forecast(features)
+
+
+@app.post("/predict/batch", response_model=ForecastBatch, tags=["Phase 6 forecasts"])
+def forecast_batch(batch: ForecastBatchInput) -> ForecastBatch:
+    return ForecastBatch(predictions=[predict_forecast(item) for item in batch.requests])

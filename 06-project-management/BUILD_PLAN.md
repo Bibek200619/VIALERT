@@ -45,10 +45,11 @@
 
 ## Phase 6: AI Prediction
 
-- Create sample prediction dataset.
-- Build rule-based or simple ML model.
-- Expose FastAPI endpoint.
-- Show predicted traffic areas on dashboards.
+- Complete: six graph-linked forecast examples and strict single/batch FastAPI inputs and outputs.
+- Complete: deterministic, explainable scoring from time, current congestion, weather, incidents, holidays/events, school peak, and simulated signal priority.
+- Complete: operator prediction desk, recommendations, risk overlay, cross-workspace outlook, and an optional high/severe A* forecast cost on Ambulance and Traffic.
+- Complete: labeled browser-local fallback when FastAPI is offline; legacy Phase 1 prediction routes retained.
+- Deferred: trained/calibrated model, real traffic history or feed, backend-wide forecast state, and prediction-aware Simulation movement.
 
 ## Phase 7: Demo Polish
 

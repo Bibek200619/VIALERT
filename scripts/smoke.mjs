@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // Read-only verification of running services. Start `npm run dev` first.
 const nodeOrigin = process.env.NODE_ORIGIN ?? 'http://127.0.0.1:4000';
@@ -31,8 +32,18 @@ try {
   assert.ok(Array.isArray(emergencies.emergencies));
   const predictions = await (await get(`${aiOrigin}/predictions`)).json();
   assert.ok(predictions.predictions.length > 0 && predictions.demo);
+  const examples = JSON.parse(readFileSync(new URL('../shared-data/prediction_inputs.json', import.meta.url), 'utf8'));
+  const forecastResponse = await fetch(`${clientOrigin}/ai/predict/batch`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: examples }), signal: AbortSignal.timeout(5000),
+  });
+  assert.equal(forecastResponse.status, 200, 'batch forecast through Vite proxy must return 200');
+  const forecast = await forecastResponse.json();
+  assert.equal(forecast.predictions.length, 6);
+  assert.equal(forecast.predictions[0].predictedCongestion, 'severe');
+  assert.ok(forecast.predictions[0].factors.includes('weekday office peak'));
   assert.match(await (await get(clientOrigin)).text(), /VIALERT/);
-  console.log('PASS city fixtures, emergencies, sample predictions, and frontend HTML');
+  console.log('PASS city fixtures, emergencies, legacy predictions, six Phase 6 batch forecasts, and frontend HTML');
 } catch (error) {
   console.error('Smoke check failed. Start all three services with npm run dev.');
   console.error(error.message);
