@@ -29,5 +29,7 @@ page. Phase 5 operator incidents fall back to same-browser local storage when
 Node is unavailable; they can still reroute the demo but are not sent to other
 browsers. API failures retain the previous visible state and show feedback. Browser
 snapshots do not synchronize different devices or browsers, and closing the
-simulation tab stops its movement. Real dispatch, physical signals, production
-WebSockets, authentication, and AI prediction integration belong to later work.
+simulation tab stops its movement. The Phase 6 prediction desk is integrated
+here as a deterministic heuristic with a labeled FastAPI/local fallback; it is
+not a live or trained forecast. Real dispatch, physical signals, production
+WebSockets, and authentication remain future work.
