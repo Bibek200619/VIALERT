@@ -13,7 +13,7 @@ export function createApiRouter(store) {
   });
 
   router.get('/city', (_request, response) => {
-    response.json({ ...store.city, demo: true });
+    response.json({ ...store.city, baselineRoads: store.baselineRoads, demo: true });
   });
 
   router.get('/emergencies', (_request, response) => {

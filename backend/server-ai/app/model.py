@@ -52,7 +52,7 @@ def calculate_risk_score(features: ForecastInput) -> tuple[int, list[str]]:
     if features.officePeak and features.dayType == "weekday" and not features.isHoliday:
         score += 16
         factors.append("weekday office peak")
-    if features.schoolPeak and not features.isHoliday:
+    if features.schoolPeak and features.dayType == "weekday" and not features.isHoliday:
         score += 7
         factors.append("school travel period")
     if features.isHoliday:
@@ -60,9 +60,11 @@ def calculate_risk_score(features: ForecastInput) -> tuple[int, list[str]]:
         factors.append("holiday reduces regular commute")
 
     if features.weather != "clear":
-        weather_risk = {"none": 6, "light": 6, "moderate": 11, "heavy": 18}[features.rainIntensity]
+        intensity = "heavy" if features.weather == "heavy-rain" else features.rainIntensity
+        intensity = "light" if intensity == "none" else intensity
+        weather_risk = {"light": 6, "moderate": 11, "heavy": 18}[intensity]
         score += weather_risk
-        factors.append(f"{features.rainIntensity if features.rainIntensity != 'none' else 'light'} rain")
+        factors.append(f"{intensity} rain")
 
     for incident in sorted(set(features.activeIncidents)):
         penalty = {"accident": 24, "construction": 14, "flood": 35, "congestion": 14, "blockage": 30}[incident]

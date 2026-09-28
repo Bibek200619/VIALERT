@@ -10,10 +10,10 @@ async function withApi(run) {
   const server = createApp({ store }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
-  const request = async (path, { method = 'GET', body, raw } = {}) => {
+  const request = async (path, { method = 'GET', body, raw, headers = {} } = {}) => {
     const response = await fetch(`${baseUrl}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173', ...headers },
       body: raw ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
     return { status: response.status, body: await response.json(), headers: response.headers };
@@ -41,6 +41,7 @@ test('health and complete mock state lifecycle; reset preserves fixture files', 
     assert.equal(health.headers.get('access-control-allow-origin'), 'http://localhost:5173');
     const baseline = (await request('/api/city')).body;
     assert.equal(baseline.demo, true);
+    assert.deepEqual(baseline.baselineRoads, baseline.roads);
     assert.deepEqual((await request('/api/emergencies')).body, { emergencies: [], demo: true });
     assert.deepEqual((await request('/api/simulation/state')).body, {
       simulation: { status: 'ready', simulationTimeSeconds: 0, incidentCount: 0, demo: true },
@@ -69,6 +70,7 @@ test('health and complete mock state lifecycle; reset preserves fixture files', 
     assert.equal(modifiedCity.roads.find((road) => road.id === 'R4').blocked, true);
     assert.equal(modifiedCity.roads.find((road) => road.id === 'R4').congestion, 'high');
     assert.equal(modifiedCity.signals.find((item) => item.id === 'S1').mode, 'manual');
+    assert.deepEqual(modifiedCity.baselineRoads, baseline.roads);
 
     await request('/api/incidents', { method: 'POST', body: { ...incident, severity: 'low', blocked: false } });
     assert.equal(store.city.roads.find((road) => road.id === 'R4').blocked, true);
@@ -102,6 +104,8 @@ test('invalid and unknown references return JSON errors without partial mutation
       ['/api/emergencies', 'POST', [], 400],
       ['/api/emergencies', 'POST', {}, 400],
       ['/api/emergencies', 'POST', { ...emergency, ambulanceId: '  ' }, 400],
+      ['/api/emergencies', 'POST', { ...emergency, ambulanceId: 'UNKNOWN' }, 404],
+      ['/api/emergencies', 'POST', { ...emergency, ambulanceId: 'BUS-12' }, 400],
       ['/api/emergencies', 'POST', { ...emergency, baseNodeId: 'missing' }, 404],
       ['/api/emergencies', 'POST', { ...emergency, destinationNodeId: 'MG-ROAD' }, 404],
       ['/api/emergencies', 'POST', { ...emergency, unexpected: true }, 400],
@@ -128,6 +132,66 @@ test('invalid and unknown references return JSON errors without partial mutation
     assert.equal(malformed.body.error.code, 'INVALID_JSON');
     assert.deepEqual(store.city, baseline);
     assert.deepEqual(store.emergencies, []);
+    assert.deepEqual(store.incidents, []);
+  });
+});
+
+test('signal priority alerts follow transitions and retried writes are idempotent', async () => {
+  await withApi(async (request, store) => {
+    await request('/api/signals/S2', { method: 'PATCH', body: { state: 'green', mode: 'emergency' } });
+    assert.equal(store.events.length, 1);
+    assert.equal(store.alerts.length, 1);
+    const alertId = store.alerts[0].id;
+    await request('/api/signals/S2', { method: 'PATCH', body: { state: 'green', mode: 'emergency' } });
+    assert.equal(store.events.length, 1);
+    assert.equal(store.alerts.length, 1);
+
+    await request('/api/signals/S2', { method: 'PATCH', body: { state: 'yellow' } });
+    assert.equal(store.alerts.length, 1, 'a phase change must not duplicate a priority alert');
+    await request(`/api/alerts/${alertId}`, { method: 'PATCH', body: { acknowledged: true } });
+    const eventsAfterAcknowledging = store.events.length;
+    await request(`/api/alerts/${alertId}`, { method: 'PATCH', body: { acknowledged: true } });
+    assert.equal(store.events.length, eventsAfterAcknowledging);
+
+    await request('/api/signals/S2', { method: 'PATCH', body: { mode: 'normal' } });
+    await request('/api/signals/S2', { method: 'PATCH', body: { mode: 'emergency' } });
+    assert.equal(store.alerts.length, 2);
+    assert.equal(store.alerts[1].acknowledged, false);
+    await request('/api/signals/S2', { method: 'PATCH', body: { mode: 'normal' } });
+    assert.equal(store.alerts.every((alert) => alert.acknowledged), true);
+    assert.equal((await request('/api/operations/summary')).body.summary.signalsInPriorityMode, 0);
+  });
+});
+
+test('browser writes require an allowed origin, including reset with a simple request', async () => {
+  await withApi(async (request, store) => {
+    await request('/api/incidents', { method: 'POST', body: incident });
+    for (const origin of ['https://untrusted.example', 'null']) {
+      const reset = await request('/api/simulation/reset', { method: 'POST', headers: { Origin: origin, 'Content-Type': 'text/plain' } });
+      assert.equal(reset.status, 403);
+      assert.equal(reset.body.error.code, 'ORIGIN_NOT_ALLOWED');
+      assert.equal(store.incidents.length, 1);
+      const mutation = await request('/api/signals/S1', { method: 'PATCH', body: { state: 'green' }, headers: { Origin: origin } });
+      assert.equal(mutation.status, 403);
+    }
+    const loopback = await request('/api/health', { headers: { Origin: 'http://127.0.0.1:5173' } });
+    assert.equal(loopback.headers.get('access-control-allow-origin'), 'http://127.0.0.1:5173');
+    assert.equal((await request('/api/simulation/reset', { method: 'POST', headers: { Origin: 'http://127.0.0.1:5173' } })).status, 200);
+    assert.equal(store.incidents.length, 0);
+  });
+});
+
+test('malformed paths, unsupported encodings, and oversized bodies return client errors', async () => {
+  await withApi(async (request, store) => {
+    const path = await request('/api/signals/%E0%A4%A', { method: 'PATCH', body: { state: 'green' } });
+    assert.equal(path.status, 400);
+    assert.equal(path.body.error.code, 'INVALID_PATH');
+    const encoding = await request('/api/incidents', { method: 'POST', body: incident, headers: { 'Content-Type': 'application/json; charset=iso-8859-1' } });
+    assert.equal(encoding.status, 415);
+    assert.equal(encoding.body.error.code, 'UNSUPPORTED_ENCODING');
+    const oversized = await request('/api/incidents', { method: 'POST', body: { ...incident, padding: 'x'.repeat(33 * 1024) } });
+    assert.equal(oversized.status, 413);
+    assert.equal(oversized.body.error.code, 'BODY_TOO_LARGE');
     assert.deepEqual(store.incidents, []);
   });
 });

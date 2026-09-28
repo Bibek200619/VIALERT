@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 Congestion = Literal["low", "medium", "high"]
@@ -12,7 +12,8 @@ Weather = Literal["clear", "rain", "heavy-rain"]
 NODES_PATH = Path(__file__).resolve().parents[3] / "shared-data" / "nodes.json"
 AREA_IDS = frozenset(node["id"] for node in json.loads(NODES_PATH.read_text()))
 ROADS_PATH = Path(__file__).resolve().parents[3] / "shared-data" / "roads.json"
-ROAD_IDS = frozenset(road["id"] for road in json.loads(ROADS_PATH.read_text()))
+ROAD_ENDPOINTS = {road["id"]: {road["from"], road["to"]} for road in json.loads(ROADS_PATH.read_text())}
+ROAD_IDS = frozenset(ROAD_ENDPOINTS)
 
 
 class PredictionInput(BaseModel):
@@ -70,7 +71,7 @@ class ForecastInput(BaseModel):
     isHoliday: bool
     officePeak: bool
     schoolPeak: bool
-    activeIncidents: list[IncidentType]
+    activeIncidents: list[IncidentType] = Field(max_length=100)
     roadConstruction: bool = False
     floodRisk: bool = False
     currentCongestion: Congestion
@@ -90,6 +91,12 @@ class ForecastInput(BaseModel):
         if value not in ROAD_IDS:
             raise ValueError("roadId must match an ID in shared-data/roads.json")
         return value
+
+    @model_validator(mode="after")
+    def validate_road_area(self):
+        if self.areaId not in ROAD_ENDPOINTS[self.roadId]:
+            raise ValueError("areaId must be an endpoint of roadId in the shared graph")
+        return self
 
 
 class Forecast(BaseModel):
