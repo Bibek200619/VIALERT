@@ -46,12 +46,6 @@ function distanceBetweenNodes(city: CityData, fromId: string, toId: string): num
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
 }
 
-function heuristicSeconds(city: CityData, fromId: string, targetId: string): number {
-  // The deliberately conservative 100 m/s lower bound keeps the straight-line
-  // heuristic admissible for this small, weighted demo graph.
-  return distanceBetweenNodes(city, fromId, targetId) / 100;
-}
-
 export function findRoute(
   city: CityData,
   startId: string,
@@ -65,10 +59,20 @@ export function findRoute(
 
   const roadById = new Map(city.roads.map((road) => [road.id, road]));
   const prioritySignalNodes = new Set(city.signals.filter((signal) => signal.mode === 'emergency').map((signal) => signal.nodeId));
+  // Derive the A* lower bound from this graph, including custom cost layers.
+  // A fixed assumed speed can overestimate a cheap edge and return a slower route.
+  let secondsPerMeter = Number.POSITIVE_INFINITY;
+  for (const road of city.roads) {
+    const distance = distanceBetweenNodes(city, road.from, road.to);
+    const cost = calculateRoadCost(road, options.roadCostMultipliers?.[road.id] ?? 1, true);
+    if (distance > 0 && Number.isFinite(distance) && Number.isFinite(cost)) secondsPerMeter = Math.min(secondsPerMeter, cost / distance);
+  }
+  if (!Number.isFinite(secondsPerMeter)) secondsPerMeter = 0;
+  const heuristicSeconds = (fromId: string) => distanceBetweenNodes(city, fromId, targetId) * secondsPerMeter;
   const open = new Set([startId]);
   const cameFrom = new Map<string, { nodeId: string; roadId: string }>();
   const costTo = new Map([[startId, 0]]);
-  const estimate = new Map([[startId, heuristicSeconds(city, startId, targetId)]]);
+  const estimate = new Map([[startId, heuristicSeconds(startId)]]);
 
   while (open.size > 0) {
     let currentId = '';
@@ -116,7 +120,7 @@ export function findRoute(
 
       cameFrom.set(edge.to, { nodeId: currentId, roadId: road.id });
       costTo.set(edge.to, nextCost);
-      estimate.set(edge.to, nextCost + heuristicSeconds(city, edge.to, targetId));
+      estimate.set(edge.to, nextCost + heuristicSeconds(edge.to));
       open.add(edge.to);
     }
   }
@@ -142,7 +146,8 @@ export function resetJourney(): JourneyState {
 }
 
 export function advanceJourney(journey: JourneyState, route: RoutePlan, stepSeconds = 30): JourneyState {
-  if (journey.status !== 'active' || route.etaSeconds <= 0) return journey;
+  if (journey.status !== 'active' || !Number.isFinite(stepSeconds) || stepSeconds <= 0) return journey;
+  if (route.etaSeconds <= 0) return { ...journey, status: 'completed', distanceTravelledMeters: route.totalDistanceMeters };
   const elapsedSeconds = Math.min(route.etaSeconds, journey.elapsedSeconds + stepSeconds);
   const distanceTravelledMeters = Math.min(
     route.totalDistanceMeters,
@@ -169,7 +174,7 @@ export function getRoutePosition(city: CityData, route: RoutePlan, distanceTrave
     const to = city.nodes.find((candidate) => candidate.id === route.nodeIds[index + 1]);
     if (!road || !from || !to) continue;
     if (remaining <= road.distanceMeters || index === route.roadIds.length - 1) {
-      const progress = Math.min(1, remaining / road.distanceMeters);
+      const progress = road.distanceMeters > 0 ? Math.min(1, remaining / road.distanceMeters) : 1;
       return {
         lat: from.lat + (to.lat - from.lat) * progress,
         lng: from.lng + (to.lng - from.lng) * progress,
@@ -213,7 +218,7 @@ function bearing(from: { lat: number; lng: number }, to: { lat: number; lng: num
 }
 
 function describeTurn(city: CityData, route: RoutePlan, segmentIndex: number): TurnGuidance['direction'] {
-  if (segmentIndex <= 0 || segmentIndex >= route.roadIds.length - 1) return segmentIndex >= route.roadIds.length - 1 ? 'arrive' : 'straight';
+  if (segmentIndex <= 0 || segmentIndex >= route.nodeIds.length - 1) return segmentIndex >= route.nodeIds.length - 1 ? 'arrive' : 'straight';
   const previous = city.nodes.find((node) => node.id === route.nodeIds[segmentIndex - 1]);
   const junction = city.nodes.find((node) => node.id === route.nodeIds[segmentIndex]);
   const next = city.nodes.find((node) => node.id === route.nodeIds[segmentIndex + 1]);
@@ -275,6 +280,7 @@ export function formatDuration(seconds: number): string {
 }
 
 export function formatSimulationTime(seconds: number): string {
+  seconds = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainder = seconds % 60;

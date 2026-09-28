@@ -74,6 +74,10 @@ export interface SimulationState {
   previousRouteNodeIds: string[];
   previousRouteRoadIds: string[];
   distanceTravelledMeters: number;
+  /** Distance along routeRoadIds[0], measured from currentNodeId. */
+  segmentProgressMeters: number;
+  currentSpeedKph: number;
+  signalWaitSeconds: number;
   distanceRemainingMeters: number;
   etaSeconds: number;
   events: SimulationEvent[];
@@ -91,7 +95,7 @@ export type SimulationAction =
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'reset' }
-  | { type: 'tick' }
+  | { type: 'tick'; deltaSeconds?: number }
   | { type: 'step' }
   | { type: 'set-speed'; speed: SimulationSpeed }
   | { type: 'select-scenario'; scenarioId: string | null }

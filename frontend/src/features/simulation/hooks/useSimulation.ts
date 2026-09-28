@@ -8,13 +8,13 @@ import {
 } from '../simulationEngine';
 import type { Scenario, ScenarioSeverity, SimulationAction, SimulationSpeed, SimulationState, VehicleConfiguration } from '../simulationTypes';
 import { SIMULATION_SNAPSHOT_KEY } from '../simulationSnapshot';
-import { incidentToHazard, readLocalIncidents, writeLocalIncidents } from '../../routing/incidentFeed';
+import { incidentToHazard, readBrowserIncidents, writeBrowserIncidents } from '../../routing/incidentFeed';
 
 export type ApiConnection = 'checking' | 'online' | 'degraded' | 'offline';
 
 // Keep the demo readable: each automatic tick advances one route junction at
 // the default speed instead of making the whole route disappear in seconds.
-export const SIMULATION_TICK_INTERVAL_MS = 10000;
+export const SIMULATION_TICK_INTERVAL_MS = 100;
 
 export interface SimulationController {
   city: CityData;
@@ -58,6 +58,7 @@ export function useSimulation(): SimulationController {
   const [isLoading, setIsLoading] = useState(true);
   const [actionNotice, setActionNotice] = useState('');
   const incidentIds = useRef(new Map<string, string[]>());
+  const lastTickAt = useRef<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,7 +88,7 @@ export function useSimulation(): SimulationController {
   useEffect(() => {
     const controller = new AbortController();
     const refreshIncidents = async () => {
-      const local = readLocalIncidents(window.localStorage);
+      const local = readBrowserIncidents();
       let remote: Awaited<ReturnType<typeof apiClient.getIncidents>>['incidents'] = [];
       try { remote = (await apiClient.getIncidents(controller.signal)).incidents.filter((incident) => incident.origin !== 'simulation'); }
       catch { /* Local simulation and offline operator incidents remain available. */ }
@@ -105,8 +106,17 @@ export function useSimulation(): SimulationController {
   }, [city]);
 
   useEffect(() => {
-    if (state.status !== 'running') return undefined;
-    const timer = window.setInterval(() => dispatch({ type: 'tick' }), SIMULATION_TICK_INTERVAL_MS);
+    if (state.status !== 'running') {
+      lastTickAt.current = null;
+      return undefined;
+    }
+    lastTickAt.current = performance.now();
+    const timer = window.setInterval(() => {
+      const now = performance.now();
+      const elapsedSeconds = lastTickAt.current === null ? SIMULATION_TICK_INTERVAL_MS / 1000 : (now - lastTickAt.current) / 1000;
+      lastTickAt.current = now;
+      dispatch({ type: 'tick', deltaSeconds: Math.min(0.5, Math.max(0.01, elapsedSeconds)) });
+    }, SIMULATION_TICK_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [state.status]);
 
@@ -155,7 +165,7 @@ export function useSimulation(): SimulationController {
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
     incidentIds.current.clear();
-    writeLocalIncidents(window.localStorage, []);
+    writeBrowserIncidents([]);
     reportApiAction(
       'Simulation reset locally and in the Node demo API.',
       'Simulation reset locally. Node API records may remain until the service is available.',
@@ -237,7 +247,7 @@ export function useSimulation(): SimulationController {
   const returnToDefaultRoute = useCallback(() => {
     dispatch({ type: 'return-default-route' });
     incidentIds.current.clear();
-    writeLocalIncidents(window.localStorage, []);
+    writeBrowserIncidents([]);
     reportApiAction(
       'Default route restored locally and Node demo state reset.',
       'Default route restored locally. Node API state could not be reset.',
