@@ -14,89 +14,60 @@ import { applyScenarioEffects } from '../features/simulation/simulationEngine';
 import type { CameraMode } from '../features/simulation/simulationTypes';
 import { PredictionInsight } from '../features/prediction/PredictionPanel';
 import { usePredictions } from '../features/prediction/usePredictions';
-
 const SimulationMap = lazy(() => import('../features/simulation/components/SimulationMap').then((module) => ({ default: module.SimulationMap })));
+type InspectorTab = 'Vehicle' | 'Conditions' | 'Forecast' | 'Timeline';
 
 export function SimulationPage() {
   const simulation = useSimulation();
   const { city, state } = simulation;
-  const [cameraMode, setCameraMode] = useState<CameraMode>('map');
+  const [cameraMode, setCameraMode] = useState<CameraMode>('third-person');
+  const [tab, setTab] = useState<InspectorTab>('Vehicle');
   const templates = useMemo(() => getScenarioTemplates(city), [city]);
-  const effectiveCity = useMemo(() => applyScenarioEffects(city, [...state.scenarios, ...state.externalScenarios]).city, [city, state.scenarios, state.externalScenarios]);
-  const activeConditions = useMemo(() => [...state.scenarios, ...state.externalScenarios].filter((scenario) => scenario.active), [state.scenarios, state.externalScenarios]);
+  const scenarios = [...state.scenarios, ...state.externalScenarios];
+  const effectiveCity = useMemo(() => applyScenarioEffects(city, scenarios).city, [city, state.scenarios, state.externalScenarios]);
+  const activeConditions = scenarios.filter((scenario) => scenario.active);
   const prediction = usePredictions(effectiveCity, activeConditions);
   const currentNode = city.nodes.find((node) => node.id === state.currentNodeId);
   const nextRoad = effectiveCity.roads.find((road) => road.id === state.routeRoadIds[0]);
+  const destination = city.hospitals.find((hospital) => hospital.id === state.vehicle.destinationId);
   const totalDistance = state.distanceTravelledMeters + state.distanceRemainingMeters;
-  const progress = totalDistance > 0 ? Math.min(100, Math.round(state.distanceTravelledMeters / totalDistance * 100)) : 0;
-  const statusLabel = state.routeStatus === 'clear' ? 'Clear corridor'
-    : state.routeStatus === 'impacted' ? 'Traffic impact'
-      : state.routeStatus === 'rerouted' ? 'Rerouted' : 'No route';
+  const progress = totalDistance > 0 ? Math.min(100, Math.round(state.distanceTravelledMeters / totalDistance * 100)) : state.status === 'completed' ? 100 : 0;
+  const statusLabel = state.routeStatus === 'clear' ? 'Clear corridor' : state.routeStatus === 'impacted' ? 'Traffic impact' : state.routeStatus === 'rerouted' ? 'Rerouted' : 'No route';
+  const tabs: InspectorTab[] = ['Vehicle', 'Conditions', 'Forecast', 'Timeline'];
 
   return <section className="simulation-page">
-    <SimulationHeader state={state} connection={simulation.connection} onReset={simulation.reset} />
-    {simulation.isLoading && <p className="load-message" role="status">Connecting to the Node API. The shared Bengaluru graph is ready meanwhile.</p>}
-    {simulation.actionNotice && <p className="action-notice simulation-notice" role="status" aria-live="polite">{simulation.actionNotice}</p>}
-
+    <SimulationHeader state={state} connection={simulation.connection} />
+    {(simulation.isLoading || simulation.actionNotice) && <p className="action-notice simulation-notice" role="status" aria-live="polite">{simulation.actionNotice || 'Connecting to the operations API. Your local city map is ready.'}</p>}
     <div className="simulation-workspace-grid">
-      <div className="simulation-primary-column">
-        <div className="simulation-camera-row">
-          <div><span className="eyebrow">Map presentation</span><strong>Choose a view</strong></div>
-          <CameraModeSelector mode={cameraMode} onChange={setCameraMode} />
-        </div>
-        <Suspense fallback={<div className="map-loading panel" role="status">Loading the simulation map…</div>}>
-          <SimulationMap city={effectiveCity} state={state} cameraMode={cameraMode} />
-        </Suspense>
-        <SimulationControls
-          state={state}
-          onStart={simulation.start}
-          onPause={simulation.pause}
-          onResume={simulation.resume}
-          onReset={simulation.reset}
-          onStep={simulation.step}
-          onSetSpeed={simulation.setSpeed}
-          onRestartScenario={simulation.restartScenario}
-          onReturnDefaultRoute={simulation.returnToDefaultRoute}
-        />
-        <section className="panel simulation-route-panel" aria-labelledby="simulation-route-title">
-          <div className="panel-heading-row"><div><span className="eyebrow">Route monitor · A* demo</span><h2 id="simulation-route-title">Active ambulance corridor</h2></div><span className={`route-status ${state.routeStatus}`}>{statusLabel}</span></div>
-          <div className="simulation-route-locations">
-            <div><span>Current position</span><strong>{currentNode?.name.replace(' (demo)', '') ?? 'Unknown graph node'}</strong></div>
-            <span className="route-direction-arrow" aria-hidden="true">→</span>
-            <div><span>Next segment</span><strong>{nextRoad?.name ?? (state.routeStatus === 'unavailable' ? 'Route unavailable' : 'Destination reached')}</strong></div>
-            <span className="route-direction-arrow" aria-hidden="true">→</span>
-            <div><span>Destination</span><strong>{city.hospitals.find((hospital) => hospital.id === state.vehicle.destinationId)?.name.replace(' (demo)', '') ?? 'Select a hospital'}</strong></div>
+      <main className="simulation-primary-column">
+        <section className="simulation-stage panel" aria-label="Ambulance simulation viewport">
+          <div className="simulation-camera-row">
+            <div className="stage-vehicle"><span className="stage-live-dot" /><div><strong>{state.vehicle.vehicleNumber}</strong><span>{currentNode?.name.replace(' (demo)', '') ?? 'On route'} → {destination?.name.replace(' (demo)', '') ?? 'Hospital'}</span></div></div>
+            <CameraModeSelector mode={cameraMode} onChange={setCameraMode} />
           </div>
-          <div className="simulation-progress-track" role="progressbar" aria-label="Ambulance route progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
-          <div className="simulation-metrics-grid">
-            <div><span>Travelled</span><strong>{formatDistance(state.distanceTravelledMeters)}</strong></div>
-            <div><span>Distance remaining</span><strong>{formatDistance(state.distanceRemainingMeters)}</strong></div>
-            <div><span>Estimated route time</span><strong>{formatDuration(state.etaSeconds)}</strong></div>
-            <div><span>Emergency priority</span><strong className={`priority-${state.vehicle.priority}`}>{state.vehicle.priority}</strong></div>
-          </div>
-          <p className={`route-impact-message ${state.routeStatus}`} role="status" aria-live="polite">{state.routeMessage}</p>
-          {state.previousRouteNodeIds.length > 1 && <p className="route-compare-note">Dashed line: previous route · Green line: active route</p>}
-          {state.routeStatus === 'unavailable' && <p className="route-error" role="alert">The ambulance is paused until the blocked corridor is reopened or the demo route is reset.</p>}
+          <Suspense fallback={<div className="map-loading" role="status">Preparing the city scene…</div>}><SimulationMap city={effectiveCity} state={state} cameraMode={cameraMode} /></Suspense>
         </section>
-      </div>
-
-      <aside className="simulation-sidebar" aria-label="Simulation configuration and event panels">
-        <VehiclePanel city={city} vehicle={state.vehicle} routeNodeIds={state.routeNodeIds} disabled={state.status === 'running'} onApply={simulation.configureVehicle} />
-        <ScenarioPanel
-          city={city}
-          templates={templates}
-          state={state}
-          onSelect={simulation.selectScenario}
-          onActivate={simulation.activateScenario}
-          onDeactivate={simulation.deactivateScenario}
-          onRemove={simulation.removeScenario}
-        />
-        <EnvironmentPanel city={city} state={state} />
-        <PredictionInsight predictions={prediction.predictions} source={prediction.source} routeRoadIds={state.routeRoadIds} highlightedRoadIds={activeConditions.flatMap((condition) => condition.roadId ? [condition.roadId] : [])} routeMessage="Forecast cost is previewed in Ambulance and Traffic; this replay uses incident-aware movement." />
-        <ScenarioVoiceAlerts state={state} />
-        <EventTimeline events={state.events} />
+        <SimulationControls state={state} onStart={simulation.start} onPause={simulation.pause} onResume={simulation.resume} onReset={simulation.reset} onStep={simulation.step} onSetSpeed={simulation.setSpeed} onRestartScenario={simulation.restartScenario} onReturnDefaultRoute={simulation.returnToDefaultRoute} />
+        <section className="trip-strip" aria-label="Route progress and trip information">
+          <div className="trip-strip-heading"><span className={`route-status ${state.routeStatus}`}>{statusLabel}</span><span>{state.vehicle.ambulanceId} · {state.vehicle.priority} priority</span></div>
+          <div className="simulation-route-locations"><div><span>Current position</span><strong>{currentNode?.name.replace(' (demo)', '') ?? 'Unknown junction'}</strong></div><span className="route-direction-arrow" aria-hidden="true">→</span><div><span>Next road</span><strong>{nextRoad?.name ?? (state.status === 'completed' ? 'Hospital arrival' : 'Calculating route')}</strong></div><span className="route-direction-arrow" aria-hidden="true">→</span><div><span>Destination</span><strong>{destination?.name.replace(' (demo)', '') ?? 'Select a hospital'}</strong></div></div>
+          <div className="simulation-progress-track" role="progressbar" aria-label="Ambulance route progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
+          <div className="simulation-metrics-grid"><div><span>Remaining</span><strong>{formatDistance(state.distanceRemainingMeters)}</strong></div><div><span>Arrival estimate</span><strong>{formatDuration(state.etaSeconds)}</strong></div><div><span>Current speed</span><strong>{Math.round(state.currentSpeedKph)} <small>km/h</small></strong></div><div><span>Traffic light</span><strong>{state.signalWaitSeconds > 0 ? `Wait ${Math.ceil(state.signalWaitSeconds)}s` : 'Clear ahead'}</strong></div></div>
+          <p className={`route-impact-message ${state.routeStatus}`} role={state.routeStatus === 'unavailable' ? 'alert' : 'status'} aria-live="polite">{state.routeMessage}</p>
+        </section>
+        {state.routeStatus === 'unavailable' && <p className="route-error" role="alert">No clear route is available. Change the conditions or reset the journey.</p>}
+        <p className="demo-disclaimer">A fictional Bengaluru road network, simulated vehicle and signal states, and a rules based traffic forecast. No real dispatch or traffic control.</p>
+      </main>
+      <aside className="simulation-sidebar" aria-label="Journey inspector">
+        <div className="inspector-heading"><div><span className="eyebrow">JOURNEY INSPECTOR</span><strong>Mission details</strong></div><span className="inspector-count">{activeConditions.length} active</span></div>
+        <div className="inspector-tabs" role="tablist" aria-label="Mission details"><div>{tabs.map((item) => <button key={item} role="tab" type="button" aria-selected={tab === item} className={tab === item ? 'selected' : ''} onClick={() => setTab(item)}>{item}</button>)}</div></div>
+        <div className="inspector-body" role="tabpanel">
+          {tab === 'Vehicle' && <><VehiclePanel city={city} vehicle={state.vehicle} routeNodeIds={state.routeNodeIds} disabled={state.status === 'running'} onApply={simulation.configureVehicle} /><section className="inspector-note"><span className="eyebrow">ROUTE CHANGE</span><p>{state.previousRouteNodeIds.length > 1 ? 'Dashed lines mark the previous route; the green line marks the active route.' : 'Activate a road incident to see the route planner respond.'}</p></section></>}
+          {tab === 'Conditions' && <ScenarioPanel city={city} templates={templates} state={state} onSelect={simulation.selectScenario} onActivate={simulation.activateScenario} onDeactivate={simulation.deactivateScenario} onRemove={simulation.removeScenario} />}
+          {tab === 'Forecast' && <><EnvironmentPanel city={effectiveCity} state={state} /><PredictionInsight predictions={prediction.predictions} source={prediction.source} routeRoadIds={state.routeRoadIds} highlightedRoadIds={activeConditions.flatMap((condition) => condition.roadId ? [condition.roadId] : [])} routeMessage="Forecasts are indicative and can be applied to route choices." /></>}
+          {tab === 'Timeline' && <><ScenarioVoiceAlerts state={state} /><EventTimeline events={state.events} /></>}
+        </div>
       </aside>
     </div>
-    <p className="demo-disclaimer">Deterministic local simulation · mock scenario effects and heuristic traffic outlook · no real emergency dispatch, vehicle tracking, signal control, or live traffic feed.</p>
   </section>;
 }

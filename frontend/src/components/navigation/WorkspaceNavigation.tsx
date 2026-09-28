@@ -1,25 +1,8 @@
 import { NavLink } from 'react-router';
-import { Icon } from '../Icon';
-
 const workspaces = [
-  { to: '/demo', label: 'Judge demo', icon: 'layers' },
-  { to: '/ambulance', label: 'Ambulance driver', icon: 'ambulance' },
-  { to: '/traffic', label: 'Traffic control', icon: 'control' },
-  { to: '/simulation', label: 'Simulation demo', icon: 'simulation' },
-] as const;
-
+  { to: '/demo', label: 'Overview' }, { to: '/simulation', label: 'Simulation' },
+  { to: '/ambulance', label: 'Driver' }, { to: '/traffic', label: 'Traffic operations' },
+];
 export function WorkspaceNavigation() {
-  return <div className="navigation-group">
-    <span className="eyebrow navigation-label">Workspaces</span>
-    <nav aria-label="Main navigation">
-      {workspaces.map(({ to, label, icon }) => <NavLink
-        key={to}
-        to={to}
-        end
-        className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-      >
-        <Icon name={icon} /><span>{label}</span><span className="nav-active-dot" aria-hidden="true" />
-      </NavLink>)}
-    </nav>
-  </div>;
+  return <nav className="workspace-navigation" aria-label="Main navigation">{workspaces.map(({ to, label }) => <NavLink key={to} to={to} end className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>{label}</NavLink>)}</nav>;
 }

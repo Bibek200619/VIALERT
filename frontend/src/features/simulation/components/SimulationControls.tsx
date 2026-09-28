@@ -34,7 +34,7 @@ export function SimulationControls({
           : state.status === 'paused'
             ? <button className="button button-primary" type="button" onClick={onResume} disabled={!hasRoute} aria-label="Resume the ambulance simulation">Resume</button>
             : <button className="button button-primary" type="button" onClick={onStart} disabled={!hasRoute || state.status === 'completed'} aria-label="Start the ambulance simulation">Start simulation</button>}
-        <button className="button button-secondary" type="button" onClick={onStep} disabled={!hasRoute || state.status === 'running' || state.status === 'completed'} aria-label="Advance one simulation tick">Step 1 tick</button>
+        <button className="button button-secondary" type="button" onClick={onStep} disabled={!hasRoute || state.status === 'running' || state.status === 'completed'} aria-label="Advance the simulation by one second">Step 1 sec</button>
       </div>
       <div className="speed-selector" role="group" aria-label="Simulation speed">
         <span>Speed</span>
@@ -46,6 +46,6 @@ export function SimulationControls({
       <button className="text-button" type="button" onClick={onReturnDefaultRoute} disabled={state.status === 'running'}>Return to default route</button>
       <button className="text-button" type="button" onClick={onReset}>Reset all</button>
     </div>
-      <p className="simulation-tick-hint">One route junction every 10 seconds at 1× · higher speeds advance additional demo junctions per tick.</p>
+      <p className="simulation-tick-hint">Playback speed changes simulated time; vehicle speed follows the road and signal state.</p>
   </section>;
 }
