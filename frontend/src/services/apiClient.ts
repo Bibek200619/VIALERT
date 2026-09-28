@@ -34,6 +34,7 @@ export interface Signal {
 export interface CityData {
   nodes: CityNode[];
   roads: Road[];
+  baselineRoads?: Road[];
   signals: Signal[];
   hospitals: { id: string; name: string; nodeId: string }[];
   bases: { id: string; name: string; nodeId: string }[];
@@ -196,16 +197,50 @@ async function request<T>(url: string, signal?: AbortSignal, init?: RequestInit)
   return response.json() as Promise<T>;
 }
 
-function isCityData(value: unknown): value is CityData {
+export function isCityData(value: unknown): value is CityData {
   if (!value || typeof value !== 'object') return false;
-  const city = value as Partial<CityData>;
-  return Array.isArray(city.nodes) && city.nodes.length > 0
-    && Array.isArray(city.roads) && city.roads.length > 0
-    && Array.isArray(city.signals)
-    && Array.isArray(city.hospitals) && city.hospitals.length > 0
-    && Array.isArray(city.bases) && city.bases.length > 0
-    && Array.isArray(city.scenarios)
-    && city.adjacency !== null && typeof city.adjacency === 'object' && Object.keys(city.adjacency).length > 0;
+  const city = value as CityData;
+  const record = (item: unknown): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && !Array.isArray(item));
+  if (!Array.isArray(city.nodes) || !city.nodes.length || !city.nodes.every((node) => record(node)
+    && typeof node.id === 'string' && typeof node.name === 'string' && typeof node.type === 'string'
+    && Number.isFinite(node.lat) && Math.abs(node.lat) <= 90 && Number.isFinite(node.lng) && Math.abs(node.lng) <= 180)) return false;
+  const nodeIds = new Set(city.nodes.map((node) => node.id));
+  if (nodeIds.size !== city.nodes.length) return false;
+  const validRoad = (road: Road) => record(road) && typeof road.id === 'string' && typeof road.name === 'string'
+    && nodeIds.has(road.from) && nodeIds.has(road.to) && Number.isFinite(road.distanceMeters) && road.distanceMeters > 0
+    && Number.isFinite(road.baseTimeSeconds) && road.baseTimeSeconds > 0
+    && ['low', 'medium', 'high'].includes(road.congestion) && typeof road.blocked === 'boolean';
+  if (!Array.isArray(city.roads) || !city.roads.length || !city.roads.every(validRoad)) return false;
+  const roads = new Map(city.roads.map((road) => [road.id, road]));
+  if (roads.size !== city.roads.length || (city.baselineRoads !== undefined
+    && (!Array.isArray(city.baselineRoads) || city.baselineRoads.length !== city.roads.length
+      || new Set(city.baselineRoads.map((road) => road?.id)).size !== roads.size
+      || !city.baselineRoads.every((road) => validRoad(road) && roads.has(road.id))))) return false;
+  if (!Array.isArray(city.signals) || !city.signals.every((signal) => record(signal) && typeof signal.id === 'string'
+    && nodeIds.has(signal.nodeId) && ['red', 'yellow', 'green'].includes(signal.state) && ['normal', 'manual', 'emergency'].includes(signal.mode))) return false;
+  const validFacilities = (items: CityData['hospitals']) => Array.isArray(items) && items.length > 0
+    && items.every((facility) => record(facility) && typeof facility.id === 'string' && typeof facility.name === 'string' && nodeIds.has(facility.nodeId));
+  if (!validFacilities(city.hospitals) || !validFacilities(city.bases) || !Array.isArray(city.scenarios)
+    || !city.scenarios.every((scenario) => record(scenario) && typeof scenario.id === 'string' && typeof scenario.name === 'string'
+      && typeof scenario.description === 'string' && ['accident', 'construction', 'rain', 'heavy-rain', 'flood', 'congestion', 'blockage'].includes(scenario.type)
+      && ['low', 'medium', 'high'].includes(scenario.severity)
+      && (scenario.roadId === undefined || roads.has(scenario.roadId)) && (scenario.nodeId === undefined || nodeIds.has(scenario.nodeId)))) return false;
+  if (!record(city.adjacency) || !Object.keys(city.adjacency).length) return false;
+  return Object.entries(city.adjacency).every(([from, edges]) => nodeIds.has(from) && Array.isArray(edges)
+    && edges.every((edge) => {
+      if (!record(edge) || typeof edge.roadId !== 'string' || typeof edge.to !== 'string' || !nodeIds.has(edge.to)) return false;
+      const road = roads.get(edge.roadId);
+      return road && ((road.from === from && road.to === edge.to) || (road.to === from && road.from === edge.to));
+    }));
+}
+
+export function cityWithoutIncidentEffects(city: CityData, fallbackRoads: Road[]): CityData {
+  return { ...city, roads: city.baselineRoads ?? city.roads.map((road) => {
+    // Older services only expose derived road conditions. Restore those two
+    // fields without discarding service geometry, names, or travel times.
+    const baseline = fallbackRoads.find((item) => item.id === road.id);
+    return baseline ? { ...road, blocked: baseline.blocked, congestion: baseline.congestion } : road;
+  }) };
 }
 
 export async function requestWithFallback<T>(

@@ -7,6 +7,11 @@ export interface SimulationSnapshot {
   publishedAt: number;
 }
 
+export function readBrowserSimulationSnapshot(): SimulationSnapshot | null {
+  try { return typeof window === 'undefined' ? null : readSimulationSnapshot(window.localStorage); }
+  catch { return null; }
+}
+
 export function readSimulationSnapshot(storage: Pick<Storage, 'getItem'>): SimulationSnapshot | null {
   try {
     const raw = storage.getItem(SIMULATION_SNAPSHOT_KEY);

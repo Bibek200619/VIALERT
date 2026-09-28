@@ -10,6 +10,10 @@ export function createEmergency(store, body) {
   const ambulanceId = requireString(body.ambulanceId, 'ambulanceId');
   const baseNodeId = requireString(body.baseNodeId, 'baseNodeId');
   const destinationNodeId = requireString(body.destinationNodeId, 'destinationNodeId');
+  const ambulance = requireEntity(store.city.vehicles.find((vehicle) => vehicle.id === ambulanceId), 'Ambulance', ambulanceId);
+  if (ambulance.type !== 'ambulance') {
+    throw new ApiError(400, 'INVALID_INPUT', `Vehicle '${ambulanceId}' is not an ambulance.`);
+  }
   requireEntity(store.city.bases.find((base) => base.nodeId === baseNodeId), 'Base node', baseNodeId);
   requireEntity(store.city.hospitals.find((hospital) => hospital.nodeId === destinationNodeId), 'Hospital node', destinationNodeId);
 

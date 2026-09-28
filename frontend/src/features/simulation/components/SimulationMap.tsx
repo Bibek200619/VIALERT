@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import { GraphMap } from '../../../components/map/GraphMap';
 import { emptyRoute } from '../simulationData';
 import { getSimulationRoutePlan } from '../simulationEngine';
-import { getSimulationRoadPath, getSimulationRoadPaths, getSimulationRoutePath } from '../simulationRoadGeometry';
-import { Simulation3DScene } from './Simulation3DScene';
+import { getSimulationPosition, getSimulationRoadPath, getSimulationRoadPaths, getSimulationRoutePath } from '../simulationRoadGeometry';
 import type { CityData } from '../../ambulance/types';
 import type { CameraMode, Scenario, SimulationState } from '../simulationTypes';
+
+const Simulation3DScene = lazy(() => import('./Simulation3DScene').then((module) => ({ default: module.Simulation3DScene })));
 
 interface SimulationMapProps {
   city: CityData;
@@ -67,7 +68,8 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
   const destination = city.hospitals.find((hospital) => hospital.id === state.vehicle.destinationId);
   const destinationNode = destination ? nodeById.get(destination.nodeId) : undefined;
   const ambulanceNode = nodeById.get(state.currentNodeId);
-  const ambulancePosition: [number, number] | null = ambulanceNode ? [ambulanceNode.lat, ambulanceNode.lng] : null;
+  const simulatedPosition = getSimulationPosition(city, state);
+  const ambulancePosition: [number, number] | null = simulatedPosition ? [simulatedPosition.lat, simulatedPosition.lng] : ambulanceNode ? [ambulanceNode.lat, ambulanceNode.lng] : null;
   const center: [number, number] = ambulancePosition ?? (routePositions[0] ?? [12.96, 77.62]);
   const tileUrl = import.meta.env.VITE_OSM_TILE_URL ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const scenarioMarkers = activeScenarios.flatMap((scenario) => {
@@ -84,7 +86,7 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
   }, [graphOnly, tilesFailed, tilesLoaded]);
 
   const useGraph = graphOnly || tilesFailed;
-  return <section className="panel simulation-map-panel" aria-labelledby="simulation-map-title">
+  return <section className={`panel simulation-map-panel${perspectiveMode ? ' perspective-map-panel' : ''}`} aria-labelledby="simulation-map-title">
     <div className="map-heading panel-heading-row">
       <div><span className="eyebrow">{perspectiveMode ? '3D perspective view' : 'Live demo map'}</span><h2 id="simulation-map-title">Bengaluru emergency corridor</h2></div>
       <div className="map-heading-actions">
@@ -99,13 +101,13 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
       </div>
     </div>
     <div className="map-frame simulation-map-frame">
-      {perspectiveMode ? <Simulation3DScene city={city} state={state} cameraMode={cameraMode} /> : useGraph ? <GraphMap
+      {perspectiveMode ? <Suspense fallback={<div className="map-loading" role="status">Building the 3D city…</div>}><Simulation3DScene city={city} state={state} cameraMode={cameraMode} /></Suspense> : useGraph ? <GraphMap
         city={city}
         route={route}
         routePath={routePositions}
         previousRoutePath={previousRoutePositions}
         roadPaths={roadPaths}
-        ambulance={ambulanceNode ? { lat: ambulanceNode.lat, lng: ambulanceNode.lng, segmentIndex: 0, currentNodeId: ambulanceNode.id, currentRoadName: ambulanceNode.name } : null}
+        ambulance={ambulancePosition && ambulanceNode ? { lat: ambulancePosition[0], lng: ambulancePosition[1], segmentIndex: 0, currentNodeId: ambulanceNode.id, currentRoadName: city.roads.find((road) => road.id === simulatedPosition?.roadId)?.name ?? ambulanceNode.name } : null}
         destinationName={destination?.name.replace(' (demo)', '') ?? 'Hospital'}
         baseNodeId={base?.nodeId}
         destinationNodeId={destination?.nodeId}
@@ -133,7 +135,7 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
         </>}
         {base && nodeById.get(base.nodeId) && <Marker position={[nodeById.get(base.nodeId)!.lat, nodeById.get(base.nodeId)!.lng]} icon={markerIcon('base', 'B')} title={base.name} alt={`Ambulance base: ${base.name}`}><Popup>{base.name.replace(' (demo)', '')}</Popup></Marker>}
         {destinationNode && <Marker position={[destinationNode.lat, destinationNode.lng]} icon={markerIcon('hospital', 'H')} title={destination?.name} alt={`Hospital destination: ${destination?.name}`}><Popup>{destination?.name.replace(' (demo)', '')}</Popup></Marker>}
-        {ambulanceNode && <Marker position={[ambulanceNode.lat, ambulanceNode.lng]} icon={markerIcon('ambulance', 'A')} title={`${state.vehicle.ambulanceId} simulated position`} alt={`${state.vehicle.ambulanceId} simulated position`}><Popup>{state.vehicle.ambulanceId} · simulated vehicle</Popup></Marker>}
+        {ambulancePosition && <Marker position={ambulancePosition} icon={markerIcon('ambulance', 'A')} title={`${state.vehicle.ambulanceId} simulated position`} alt={`${state.vehicle.ambulanceId} simulated position`}><Popup>{state.vehicle.ambulanceId} · simulated vehicle</Popup></Marker>}
         {city.signals.map((signal) => {
           const node = nodeById.get(signal.nodeId);
           if (!node) return null;
@@ -143,6 +145,6 @@ export function SimulationMap({ city, state, cameraMode }: SimulationMapProps) {
       </MapContainer>}
       {tilesFailed && !graphOnly && !perspectiveMode && <p className="map-fallback-note" role="status">Street tiles unavailable; the local shared graph is shown.</p>}
     </div>
-    <div className="map-footer"><span>{perspectiveMode ? 'Perspective camera · green emergency corridor · destination and signal guidance are simulated.' : 'Green route · amber congestion · red blocked road · incident markers are simulated.'}</span><span>{perspectiveMode ? 'Shared simulation state' : useGraph ? 'Shared city graph fallback' : 'Street tiles © OpenStreetMap contributors'}</span></div>
+    <div className="map-footer"><span>{perspectiveMode ? 'Vehicle, traffic and signal timing are simulated.' : 'Green route · amber congestion · red blocked road · incident markers are simulated.'}</span>{!perspectiveMode && <span>{useGraph ? 'Shared city graph fallback' : 'Street tiles © OpenStreetMap contributors'}</span>}</div>
   </section>;
 }

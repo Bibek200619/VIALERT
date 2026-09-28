@@ -50,6 +50,7 @@ export function acknowledgeAlert(store, alertId, body) {
     throw new ApiError(400, 'INVALID_INPUT', 'acknowledged must be true.');
   }
   const alert = requireEntity(store.alerts.find((item) => item.id === alertId), 'Alert', alertId);
+  if (alert.acknowledged) return alert;
   alert.acknowledged = true;
   addOperationsEvent(store, 'alert', alertId, `${alert.title} acknowledged`, 'info');
   return alert;

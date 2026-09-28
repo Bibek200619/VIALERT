@@ -1,4 +1,5 @@
 import type { CityData, Road, RoutePlan } from '../ambulance/types';
+import type { SimulationState } from './simulationTypes';
 
 export type SimulationLatLng = [number, number];
 
@@ -67,4 +68,49 @@ export function getSimulationRoutePath(city: CityData, route: RoutePlan): Simula
 
 export function getSimulationRoadPaths(city: CityData): Record<string, SimulationLatLng[]> {
   return Object.fromEntries(city.roads.map((road) => [road.id, getSimulationRoadPath(city, road)]));
+}
+
+export interface SimulationPosition {
+  lat: number;
+  lng: number;
+  /** Clockwise degrees from geographic north. */
+  bearing: number;
+  roadId: string | null;
+  progress: number;
+}
+
+/** Keep both map and 3D views on the same distance-weighted road polyline. */
+export function getSimulationPosition(city: CityData, state: SimulationState): SimulationPosition | null {
+  const origin = city.nodes.find((node) => node.id === state.currentNodeId);
+  if (!origin) return null;
+  const road = city.roads.find((candidate) => candidate.id === state.routeRoadIds[0]);
+  if (!road) return { lat: origin.lat, lng: origin.lng, bearing: 0, roadId: null, progress: 0 };
+  const points = [...getSimulationRoadPath(city, road)];
+  if (state.currentNodeId === road.to) points.reverse();
+  const progress = Math.max(0, Math.min(1, state.segmentProgressMeters / road.distanceMeters));
+  const lengths = points.slice(1).map((point, index) => {
+    const previous = points[index];
+    const longitudeScale = Math.cos((point[0] + previous[0]) * Math.PI / 360);
+    return Math.hypot(point[0] - previous[0], (point[1] - previous[1]) * longitudeScale);
+  });
+  let remaining = lengths.reduce((sum, length) => sum + length, 0) * progress;
+  for (let index = 0; index < lengths.length; index += 1) {
+    const length = lengths[index];
+    if (remaining <= length || index === lengths.length - 1) {
+      const from = points[index];
+      const to = points[index + 1];
+      const fraction = length > 0 ? Math.min(1, remaining / length) : 0;
+      const north = to[0] - from[0];
+      const east = (to[1] - from[1]) * Math.cos((to[0] + from[0]) * Math.PI / 360);
+      return {
+        lat: from[0] + north * fraction,
+        lng: from[1] + (to[1] - from[1]) * fraction,
+        bearing: (Math.atan2(east, north) * 180 / Math.PI + 360) % 360,
+        roadId: road.id,
+        progress,
+      };
+    }
+    remaining -= length;
+  }
+  return { lat: origin.lat, lng: origin.lng, bearing: 0, roadId: road.id, progress };
 }

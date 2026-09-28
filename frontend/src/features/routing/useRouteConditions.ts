@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CityData, IncidentRecord } from '../../services/apiClient';
 import { apiClient } from '../../services/apiClient';
 import { demoCityData } from '../ambulance/ambulanceData';
-import { readSimulationSnapshot, type SimulationSnapshot } from '../simulation/simulationSnapshot';
+import { readBrowserSimulationSnapshot, type SimulationSnapshot } from '../simulation/simulationSnapshot';
 import { buildDynamicGraph } from './dynamicRouting';
-import { incidentToHazard, readLocalIncidents, sameIncidents } from './incidentFeed';
+import { incidentToHazard, readBrowserIncidents, sameIncidents } from './incidentFeed';
 
 function currentSnapshot(): SimulationSnapshot | null {
   try {
-    const snapshot = readSimulationSnapshot(window.localStorage);
+    const snapshot = readBrowserSimulationSnapshot();
     return snapshot && Date.now() - snapshot.publishedAt <= 600_000 ? snapshot : null;
   }
   catch { return null; }
@@ -16,7 +16,7 @@ function currentSnapshot(): SimulationSnapshot | null {
 
 export function useRouteConditions(city: CityData) {
   const [remoteIncidents, setRemoteIncidents] = useState<IncidentRecord[]>([]);
-  const [localIncidents, setLocalIncidents] = useState<IncidentRecord[]>(() => readLocalIncidents(window.localStorage));
+  const [localIncidents, setLocalIncidents] = useState<IncidentRecord[]>(readBrowserIncidents);
   const [snapshot, setSnapshot] = useState(currentSnapshot);
   const [signals, setSignals] = useState(city.signals);
 
@@ -36,7 +36,7 @@ export function useRouteConditions(city: CityData) {
   useEffect(() => {
     const refresh = () => {
       setSnapshot((previous) => { const next = currentSnapshot(); return previous?.publishedAt === next?.publishedAt ? previous : next; });
-      setLocalIncidents((previous) => { const next = readLocalIncidents(window.localStorage); return sameIncidents(previous, next) ? previous : next; });
+      setLocalIncidents((previous) => { const next = readBrowserIncidents(); return sameIncidents(previous, next) ? previous : next; });
     };
     const timer = window.setInterval(refresh, 1000);
     window.addEventListener('storage', refresh);

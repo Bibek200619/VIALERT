@@ -100,6 +100,8 @@ test('six forecast examples refer to distinct graph roads and valid factor value
   for (const input of predictionInputs) {
     assert.ok(nodeIds.has(input.areaId));
     assert.ok(roadById.has(input.roadId));
+    const road = roadById.get(input.roadId);
+    assert.ok([road.from, road.to].includes(input.areaId), `${input.areaId} must belong to ${input.roadId}`);
     assert.match(input.timeOfDay, /^([01][0-9]|2[0-3]):[0-5][0-9]$/);
     assert.ok(['weekday', 'weekend'].includes(input.dayType));
     assert.ok(['clear', 'rain', 'heavy-rain'].includes(input.weather));

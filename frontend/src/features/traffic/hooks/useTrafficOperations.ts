@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { demoCityData } from '../../ambulance/ambulanceData';
-import { readSimulationSnapshot } from '../../simulation/simulationSnapshot';
+import { readBrowserSimulationSnapshot } from '../../simulation/simulationSnapshot';
 import { apiClient, type CityData, type IncidentRecord, type IncidentRequest, type OperationsAlertRecord, type OperationsEventRecord, type Signal, type VehicleFixture } from '../../../services/apiClient';
 import { buildDynamicGraph } from '../../routing/dynamicRouting';
 import { findRoute } from '../../ambulance/ambulanceData';
 import { combineCostMultipliers, explainForecastRouteEffect } from '../../prediction/predictionModel';
 import { usePredictions } from '../../prediction/usePredictions';
-import { incidentToHazard, readLocalIncidents, sameIncidents, writeLocalIncidents } from '../../routing/incidentFeed';
+import { incidentToHazard, readBrowserIncidents, sameIncidents, writeBrowserIncidents } from '../../routing/incidentFeed';
 import { demoVehicles } from '../trafficData';
 import { deriveReadyAlert, deriveSimulationAlerts, deriveSimulationEvents, deriveSimulationIncidents, filterVehicles, getOperationsMetrics, mapSimulationToVehicle, vehicleFromFixture } from '../trafficUtils';
 import type { AlertSeverityFilter, AlertTypeFilter, OperationsAlert, VehicleFilter } from '../trafficTypes';
@@ -19,7 +19,7 @@ export function canApplyPriorityChange(mode: Signal['mode'], confirmed: boolean)
 
 function currentSnapshot() {
   try {
-    const snapshot = typeof window === 'undefined' ? null : readSimulationSnapshot(window.localStorage);
+    const snapshot = readBrowserSimulationSnapshot();
     return snapshot && Date.now() - snapshot.publishedAt <= 600_000 ? snapshot : null;
   }
   catch { return null; }
@@ -30,7 +30,7 @@ export function useTrafficOperations() {
   const [fixtures, setFixtures] = useState<VehicleFixture[]>(demoVehicles);
   const [signals, setSignals] = useState<Signal[]>(demoCityData.signals);
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
-  const [localIncidents, setLocalIncidents] = useState<IncidentRecord[]>(() => typeof window === 'undefined' ? [] : readLocalIncidents(window.localStorage));
+  const [localIncidents, setLocalIncidents] = useState<IncidentRecord[]>(readBrowserIncidents);
   const [backendAlerts, setBackendAlerts] = useState<OperationsAlertRecord[]>([]);
   const [backendEvents, setBackendEvents] = useState<OperationsEventRecord[]>([]);
   const [snapshot, setSnapshot] = useState(currentSnapshot);
@@ -67,7 +67,7 @@ export function useTrafficOperations() {
 
   useEffect(() => {
     const read = () => setLocalIncidents((previous) => {
-      const next = readLocalIncidents(window.localStorage);
+      const next = readBrowserIncidents();
       return sameIncidents(previous, next) ? previous : next;
     });
     const timer = window.setInterval(read, 3000);
@@ -198,7 +198,7 @@ export function useTrafficOperations() {
     }
     const created: IncidentRecord = { ...payload, origin: 'operator', id: `LOCAL-${Date.now()}`, createdAt: new Date().toISOString(), demo: true };
     const next = [...localIncidents, created];
-    if (!writeLocalIncidents(window.localStorage, next)) { setNotice('Local storage is unavailable; the incident was not saved.'); return false; }
+    if (!writeBrowserIncidents(next)) { setNotice('Local storage is unavailable; the incident was not saved.'); return false; }
     setLocalIncidents(next);
     setNotice(`Simulated ${payload.type} activated locally. Node API did not record this change.`);
     return true;
@@ -207,7 +207,7 @@ export function useTrafficOperations() {
   const removeIncident = useCallback(async (incidentId: string) => {
     if (incidentId.startsWith('LOCAL-')) {
       const next = localIncidents.filter((incident) => incident.id !== incidentId);
-      if (!writeLocalIncidents(window.localStorage, next)) { setNotice('Local incident could not be cleared.'); return false; }
+      if (!writeBrowserIncidents(next)) { setNotice('Local incident could not be cleared.'); return false; }
       setLocalIncidents(next);
       setNotice('Local simulated incident cleared; routes recalculated.');
       return true;

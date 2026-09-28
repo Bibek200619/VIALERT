@@ -4,10 +4,20 @@ import { createStore } from './data/store.js';
 import { createApiRouter } from './routes/api.js';
 import { ApiError } from './services/validation.js';
 
-export function createApp({ store = createStore(), clientOrigin = 'http://localhost:5173' } = {}) {
+export function createApp({ store = createStore(), clientOrigin = 'http://localhost:5173,http://127.0.0.1:5173' } = {}) {
   const app = express();
+  const allowedOrigins = clientOrigin.split(',').map((origin) => origin.trim()).filter(Boolean);
   app.disable('x-powered-by');
-  app.use(cors({ origin: clientOrigin }));
+  app.use(cors({ origin: allowedOrigins }));
+  // CORS alone prevents reading responses, not sending simple cross-origin writes.
+  app.use((request, _response, next) => {
+    const origin = request.get('origin');
+    if (origin && !['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !allowedOrigins.includes(origin)) {
+      next(new ApiError(403, 'ORIGIN_NOT_ALLOWED', 'This browser origin is not allowed to change demo state.'));
+      return;
+    }
+    next();
+  });
   app.use(express.json({ limit: '32kb' }));
   app.use('/api', createApiRouter(store));
   app.use((_request, _response, next) => {
@@ -21,6 +31,14 @@ export function createApp({ store = createStore(), clientOrigin = 'http://localh
     }
     if (error.type === 'entity.too.large') {
       response.status(413).json({ error: { code: 'BODY_TOO_LARGE', message: 'Request body exceeds the 32 KB limit.' }, demo: true });
+      return;
+    }
+    if (error.type === 'charset.unsupported' || error.type === 'encoding.unsupported') {
+      response.status(415).json({ error: { code: 'UNSUPPORTED_ENCODING', message: 'Use UTF-8 JSON with a supported content encoding.' }, demo: true });
+      return;
+    }
+    if (error instanceof URIError) {
+      response.status(400).json({ error: { code: 'INVALID_PATH', message: 'Request path contains invalid URL encoding.' }, demo: true });
       return;
     }
     if (error instanceof ApiError) {

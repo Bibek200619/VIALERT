@@ -42,7 +42,8 @@ export function getWeatherMultiplier(hazard: Pick<RoadHazard, 'type' | 'severity
 }
 
 export function calculateRoadCost(road: Road, incidentMultiplier = 1, emergencyPriority = false): number {
-  if (road.blocked) return Number.POSITIVE_INFINITY;
+  if (road.blocked || !Number.isFinite(road.baseTimeSeconds) || road.baseTimeSeconds < 0
+    || !Number.isFinite(incidentMultiplier) || incidentMultiplier < 0) return Number.POSITIVE_INFINITY;
   const signalBenefit = emergencyPriority ? 0.9 : 1;
   return road.baseTimeSeconds * congestionMultiplier[road.congestion] * incidentMultiplier * signalBenefit;
 }
